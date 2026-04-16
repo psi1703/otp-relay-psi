@@ -208,6 +208,56 @@ function fmtShortDate(iso) {
   return d.toLocaleDateString();
 }
 
+function normalizeToken(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function emptyWizardUser(token = '', display_name = '') {
+  return {
+    token,
+    display_name,
+    iits_username: '',
+    adm_username: '',
+    completed: [],
+    adminCompleted: [],
+    iits_pw_date: null,
+    adm_pw_date: null,
+    vpn_date: null,
+  };
+}
+
+function mergeAdminUsers(wizardUsers = [], loadedUsers = []) {
+  const wizardMap = new Map((wizardUsers || []).map(u => [normalizeToken(u.token), u]));
+  const allTokens = new Set([
+    ...(loadedUsers || []).map(u => normalizeToken(u.token)),
+    ...(wizardUsers || []).map(u => normalizeToken(u.token)),
+  ]);
+
+  return [...allTokens]
+    .filter(Boolean)
+    .map(token => {
+      const base = (loadedUsers || []).find(u => normalizeToken(u.token) === token) || {};
+      const wizard = wizardMap.get(token) || {};
+      return {
+        token,
+        name: base.name || wizard.name || '',
+        email: base.email || wizard.email || '',
+        display_name: wizard.display_name || base.name || '',
+        iits_username: wizard.iits_username || '',
+        adm_username: wizard.adm_username || '',
+        completed: wizard.completed || [],
+        adminCompleted: wizard.adminCompleted || [],
+        iits_pw_date: wizard.iits_pw_date || null,
+        adm_pw_date: wizard.adm_pw_date || null,
+        vpn_date: wizard.vpn_date || null,
+        updated_at: wizard.updated_at || wizard.lastActive || null,
+        lastActive: wizard.lastActive || wizard.updated_at || null,
+      };
+    })
+    .sort((a, b) => a.token.localeCompare(b.token));
+}
+
+
 function Logo() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 44" height="36" aria-label="INIT — The Future of Mobility">
@@ -228,27 +278,50 @@ function Logo() {
 
 function App() {
   const [view, setView] = useState('otp');
-  const [wizardUser, setWizardUser] = useState({ token: '', display_name: '', iits_username: '', adm_username: '', completed: [], adminCompleted: [], iits_pw_date: null, adm_pw_date: null, vpn_date: null });
+  const [directoryUsers, setDirectoryUsers] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [login, setLogin] = useState({ tokenChars: ['', '', ''], error: '' });
+  const [wizardUser, setWizardUser] = useState(emptyWizardUser());
   const [wizardStatus, setWizardStatus] = useState({ saving: false, message: '' });
   const [openStep, setOpenStep] = useState(null);
   const [faqOpen, setFaqOpen] = useState({});
-  const [otp, setOtp] = useState({ tokenChars: ['', '', ''], panel: 'claim', message: '', position: 1, waitEstimate: 0, queueDepth: 0, otpValue: '———', activeRemaining: CONFIG.CLAIM_EXPIRY_SEC, otpRemaining: CONFIG.OTP_DISPLAY_SEC });
+  const [otp, setOtp] = useState({ panel: 'claim', message: '', position: 1, waitEstimate: 0, queueDepth: 0, otpValue: '———', activeRemaining: CONFIG.CLAIM_EXPIRY_SEC, otpRemaining: CONFIG.OTP_DISPLAY_SEC, token: '' });
   const [admin, setAdmin] = useState({ session: sessionStorage.getItem('adminSession') || '', configured: false, mode: 'login', error: '', credential: '', current: '', confirm: '', data: null, loading: false, configTokens: 'JA, AM, CS' });
 
   useEffect(() => {
     API.adminAuthStatus().then(d => setAdmin(s => ({ ...s, configured: !!d.configured, mode: d.configured ? 'login' : 'setup' }))).catch(() => {});
+    API.adminUsers().then(d => {
+      const list = d.users || [];
+      setDirectoryUsers(list);
+      const remembered = normalizeToken(sessionStorage.getItem('portalUserToken') || '');
+      if (remembered) {
+        const found = list.find(u => normalizeToken(u.token) === remembered);
+        if (found) setCurrentUser({ token: normalizeToken(found.token), name: found.name || '', email: found.email || '' });
+      }
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    const token = wizardUser.token?.trim().toUpperCase();
-    if (!token) return;
+    if (!currentUser?.token) {
+      setWizardUser(emptyWizardUser());
+      return;
+    }
+    const token = normalizeToken(currentUser.token);
     let cancelled = false;
     API.getWizard(token).then(data => {
-      if (cancelled || !data) return;
-      setWizardUser(s => ({ ...s, ...data, token }));
-    }).catch(() => {});
+      if (cancelled) return;
+      setWizardUser({
+        ...emptyWizardUser(token, currentUser.name || ''),
+        ...data,
+        token,
+        display_name: (data && data.display_name) || currentUser.name || '',
+      });
+    }).catch(() => {
+      if (cancelled) return;
+      setWizardUser(emptyWizardUser(token, currentUser.name || ''));
+    });
     return () => { cancelled = true; };
-  }, [wizardUser.token]);
+  }, [currentUser?.token, currentUser?.name]);
 
   useEffect(() => {
     if (!otp.panel || otp.panel === 'claim' || !otp.token) return;
@@ -334,7 +407,7 @@ function App() {
   }
 
   async function claimOtp() {
-    const token = otp.tokenChars.join('').trim().toUpperCase();
+    const token = normalizeToken(currentUser?.token);
     if (token.length < 2) return;
     try {
       const data = await API.claimOtp(token);
@@ -358,13 +431,12 @@ function App() {
   }
 
   function resetClaim() {
-    setOtp({ tokenChars: ['', '', ''], panel: 'claim', message: '', position: 1, waitEstimate: 0, queueDepth: 0, otpValue: '———', activeRemaining: CONFIG.CLAIM_EXPIRY_SEC, otpRemaining: CONFIG.OTP_DISPLAY_SEC, token: '' });
+    setOtp({ panel: 'claim', message: '', position: 1, waitEstimate: 0, queueDepth: 0, otpValue: '———', activeRemaining: CONFIG.CLAIM_EXPIRY_SEC, otpRemaining: CONFIG.OTP_DISPLAY_SEC, token: normalizeToken(currentUser?.token) });
   }
 
   async function retryOtp() {
     try { if (otp.token) await API.deleteClaim(otp.token); } catch {}
     const token = otp.token;
-    setOtp(s => ({ ...s, tokenChars: token ? token.split('').concat(['']).slice(0,3) : ['', '', ''] }));
     if (token) {
       try {
         const data = await API.claimOtp(token);
@@ -407,7 +479,8 @@ function App() {
         API.adminLog(session).catch(() => ({ total: 0, entries: [] })),
         API.adminConfig(session).catch(() => ({ admin_tokens: ['JA','AM','CS'] })),
       ]);
-      setAdmin(s => ({ ...s, data: { users: wizard.users || [], queue: queue.queue || [], log: log.entries || [], logTotal: log.total || 0, userCount: users.count || 0 }, configTokens: (config.admin_tokens || []).join(', '), loading: false }));
+      const mergedUsers = mergeAdminUsers(wizard.users || [], users.users || []);
+      setAdmin(s => ({ ...s, data: { users: mergedUsers, queue: queue.queue || [], log: log.entries || [], logTotal: log.total || 0, userCount: users.count || 0 }, configTokens: (config.admin_tokens || []).join(', '), loading: false }));
     } catch (e) {
       setAdmin(s => ({ ...s, error: e.message, loading: false }));
     }
@@ -434,6 +507,33 @@ function App() {
     setAdmin(s => ({ ...s, session: '', data: null }));
   }
 
+
+  function submitLogin() {
+    const token = normalizeToken(login.tokenChars.join(''));
+    const found = directoryUsers.find(u => normalizeToken(u.token) === token);
+    if (!token || token.length < 2) {
+      setLogin(s => ({ ...s, error: 'Enter a valid 2–3 character token.' }));
+      return;
+    }
+    if (!found) {
+      setLogin(s => ({ ...s, error: 'Token not recognised. Check with IT.' }));
+      return;
+    }
+    sessionStorage.setItem('portalUserToken', token);
+    setCurrentUser({ token, name: found.name || '', email: found.email || '' });
+    setOtp(s => ({ ...s, token }));
+  }
+
+  function logoutUser() {
+    sessionStorage.removeItem('portalUserToken');
+    setCurrentUser(null);
+    setWizardUser(emptyWizardUser());
+    setOpenStep(null);
+    setView('otp');
+    setOtp({ panel: 'claim', message: '', position: 1, waitEstimate: 0, queueDepth: 0, otpValue: '———', activeRemaining: CONFIG.CLAIM_EXPIRY_SEC, otpRemaining: CONFIG.OTP_DISPLAY_SEC, token: '' });
+    setLogin({ tokenChars: ['', '', ''], error: '' });
+  }
+
   const sharedSidebar = (
     <div className="side-stack">
       <div className="card side-card">
@@ -456,22 +556,28 @@ function App() {
     </div>
   );
 
+  if (!currentUser) {
+    return <LoginGate login={login} setLogin={setLogin} submitLogin={submitLogin} />;
+  }
+
   return (
     <>
       <header className="topbar">
         <div className="topbar-left"><Logo /><span className="topbar-title">OTP Portal</span></div>
         <div className="topbar-right">
+          <span className="nav-pill active">{currentUser.token}</span>
           {['otp', 'wizard', 'help', 'admin'].map(v => (
             <span key={v} className={`nav-pill ${view === v ? 'active' : ''}`} onClick={() => {
               setView(v);
               if (v === 'admin' && admin.session && !admin.data) loadAdminData();
             }}>{v === 'otp' ? 'OTP' : v === 'wizard' ? 'RTA Wizard' : v === 'help' ? 'Help' : 'Admin'}</span>
           ))}
-          {admin.session && view === 'admin' && <button className="btn btn-secondary" onClick={logoutAdmin}>Logout</button>}
+          <button className="btn btn-secondary" onClick={logoutUser}>Logout</button>
+          {admin.session && view === 'admin' && <button className="btn btn-secondary" onClick={logoutAdmin}>Admin logout</button>}
         </div>
       </header>
       <main className="app-shell">
-        {view === 'otp' && <OtpView otp={otp} setOtp={setOtp} claimOtp={claimOtp} retryOtp={retryOtp} resetClaim={resetClaim} sidebar={sharedSidebar} />}
+        {view === 'otp' && <OtpView otp={otp} claimOtp={claimOtp} retryOtp={retryOtp} resetClaim={resetClaim} sidebar={sharedSidebar} currentUser={currentUser} />}
         {view === 'wizard' && <WizardView user={wizardUser} saveWizard={saveWizard} wizardStatus={wizardStatus} openStep={openStep} setOpenStep={setOpenStep} doneCount={doneCount} progressPct={progressPct} nextStep={nextStep} toggleStep={toggleStep} />}
         {view === 'help' && <HelpView faqOpen={faqOpen} setFaqOpen={setFaqOpen} />}
         {view === 'admin' && <AdminView admin={admin} setAdmin={setAdmin} doAdminAuth={doAdminAuth} loadAdminData={loadAdminData} toggleAdminStep={toggleAdminStep} pendingAdminTasks={pendingAdminTasks} saveConfig={saveConfig} />}
@@ -480,20 +586,85 @@ function App() {
   );
 }
 
-function OtpView({ otp, setOtp, claimOtp, retryOtp, resetClaim, sidebar }) {
-  const token = otp.tokenChars.join('');
-  const claimDisabled = token.trim().length < 2;
+function LoginGate({ login, setLogin, submitLogin }) {
+  const inputRefs = React.useRef([]);
+  const token = login.tokenChars.join('');
+  const disabled = token.trim().length < 2;
+
+  function onChar(i, value) {
+    const v = (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(-1);
+    const next = [...login.tokenChars];
+    next[i] = v;
+    setLogin(s => ({ ...s, tokenChars: next, error: '' }));
+    if (v && i < 2) requestAnimationFrame(() => inputRefs.current[i + 1]?.focus());
+  }
+
+  function onKeyDown(i, e) {
+    if (e.key === 'Backspace' && !login.tokenChars[i] && i > 0) {
+      requestAnimationFrame(() => inputRefs.current[i - 1]?.focus());
+      return;
+    }
+    if (e.key === 'ArrowLeft' && i > 0) {
+      e.preventDefault();
+      inputRefs.current[i - 1]?.focus();
+      return;
+    }
+    if (e.key === 'ArrowRight' && i < 2) {
+      e.preventDefault();
+      inputRefs.current[i + 1]?.focus();
+      return;
+    }
+    if (e.key === 'Enter' && !disabled) {
+      e.preventDefault();
+      submitLogin();
+    }
+  }
+
+  function onPaste(e) {
+    e.preventDefault();
+    const paste = (e.clipboardData.getData('text') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
+    const next = ['', '', ''];
+    for (let i = 0; i < paste.length; i++) next[i] = paste[i];
+    setLogin(s => ({ ...s, tokenChars: next, error: '' }));
+    requestAnimationFrame(() => inputRefs.current[Math.min(paste.length, 2)]?.focus());
+  }
+
+  return (
+    <div className="auth-wrap">
+      <div className="card main-panel">
+        <div className="eyebrow">// User login</div>
+        <h1 className="h1">Enter your token</h1>
+        <div className="sub">Use your 2–3 character INIT token to enter the portal. The token is validated against the loaded users list.</div>
+        <div className="token-wrap">
+          {[0,1,2].map(i => (
+            <input
+              key={i}
+              ref={el => (inputRefs.current[i] = el)}
+              className="token-char mono"
+              value={login.tokenChars[i]}
+              onChange={e => onChar(i, e.target.value)}
+              onKeyDown={e => onKeyDown(i, e)}
+              onPaste={onPaste}
+              placeholder="_"
+              maxLength={1}
+              autoComplete="off"
+              spellCheck="false"
+            />
+          ))}
+        </div>
+        <div className="token-hint">2 or 3 characters · letters and digits only</div>
+        {login.error && <div className="error-box" style={{ marginBottom: 12 }}>{login.error}</div>}
+        <button className="btn btn-primary" disabled={disabled} onClick={submitLogin}>Go</button>
+      </div>
+    </div>
+  );
+}
+
+function OtpView({ otp, claimOtp, retryOtp, resetClaim, sidebar, currentUser }) {
   const ringValue = otp.panel === 'otp' ? otp.otpRemaining : otp.activeRemaining;
   const ringTotal = otp.panel === 'otp' ? CONFIG.OTP_DISPLAY_SEC : CONFIG.CLAIM_EXPIRY_SEC;
   const offset = CONFIG.RING_CIRCUMFERENCE * (1 - ringValue / ringTotal);
   const fmt = secs => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2,'0')}`;
-
-  function onChar(i, value) {
-    const v = (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(-1);
-    const next = [...otp.tokenChars];
-    next[i] = v;
-    setOtp(s => ({ ...s, tokenChars: next }));
-  }
 
   return (
     <div className="user-grid">
@@ -502,12 +673,9 @@ function OtpView({ otp, setOtp, claimOtp, retryOtp, resetClaim, sidebar }) {
           <div className="card claim-card">
             <div className="eyebrow">// Shared OTP relay</div>
             <h1 className="h1">Request your OTP</h1>
-            <div className="sub">Enter your personal token and claim your slot. The OTP code will appear right here — no email needed.</div>
-            <div className="token-wrap">
-              {[0,1,2].map(i => <input key={i} className="token-char mono" value={otp.tokenChars[i]} onChange={e => onChar(i, e.target.value)} placeholder="_" />)}
-            </div>
-            <div className="token-hint">2 or 3 characters · letters and digits only</div>
-            <button className="btn btn-primary" disabled={claimDisabled} onClick={claimOtp}>Claim my slot →</button>
+            <div className="sub">You are signed in as <strong>{currentUser.token}</strong>{currentUser.name ? ` — ${currentUser.name}` : ''}. Click below to claim your slot.</div>
+            <div className="token-hint">Logged-in token · {currentUser.token}</div>
+            <button className="btn btn-primary" onClick={claimOtp}>Claim my slot →</button>
             <div className="footer-note">Never share your OTP with anyone — not even IT. Especially not IT.</div>
           </div>
         )}
@@ -602,7 +770,7 @@ function WizardView({ user, saveWizard, wizardStatus, openStep, setOpenStep, don
           <div>
             <div className="eyebrow">// RTA onboarding dashboard</div>
             <h1 className="h1">RTA Access Wizard</h1>
-            <div className="sub">Manager-style layout, but in the INIT light theme and official RS colors. Your token record is server-backed so reminders and progress persist across devices.</div>
+            <div className="sub">Your token record is server-backed so reminders and progress persist across devices.</div>
           </div>
           <div className="hero-meta">
             <span className="pill primary">{doneCount} / {STEPS.length} done</span>
@@ -662,7 +830,6 @@ function WizardView({ user, saveWizard, wizardStatus, openStep, setOpenStep, don
         <div className="card side-card">
           <div className="side-card-title">Your credentials</div>
           <div className="form-grid">
-            <div className="field"><label>INIT token</label><input value={user.token || ''} onChange={e => saveWizard({ token: e.target.value })} placeholder="2–3 chars" /></div>
             <div className="field"><label>Display name</label><input value={user.display_name || ''} onChange={e => saveWizard({ display_name: e.target.value })} placeholder="e.g. Sara" /></div>
             <div className="field"><label>IITS username</label><input value={user.iits_username || ''} onChange={e => saveWizard({ iits_username: e.target.value })} placeholder="IITS_…" /></div>
             <div className="field"><label>ADM username</label><input value={user.adm_username || ''} onChange={e => saveWizard({ adm_username: e.target.value })} placeholder="ADM_…" /></div>
@@ -800,7 +967,6 @@ function HelpView({ faqOpen, setFaqOpen }) {
 }
 
 function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminStep, pendingAdminTasks, saveConfig }) {
-  const [adminTab, setAdminTab] = useState('wizard');
   useEffect(() => {
     if (admin.session && !admin.data) loadAdminData();
   }, [admin.session]);
@@ -845,98 +1011,59 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
           <div className="hero-row">
             <div>
               <div className="eyebrow">// Admin dashboard</div>
-              <h1 className="h1">{adminTab === 'wizard' ? 'RTA Wizard Progress' : 'OTP Log'}</h1>
-              <div className="sub">{adminTab === 'wizard' ? 'Users, credentials, progress, and admin-owned steps in one view.' : 'Audit log and queue activity for the OTP relay.'}</div>
+              <h1 className="h1">RTA Wizard Progress</h1>
+              <div className="sub">Users, credentials, progress, and admin-owned steps in one view.</div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <div className="admin-tabbar">
-                <button className={`btn ${adminTab === 'wizard' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setAdminTab('wizard')}>RTA Wizard</button>
-                <button className={`btn ${adminTab === 'otp-log' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setAdminTab('otp-log')}>OTP Log</button>
-              </div>
               <button className="btn btn-secondary" onClick={() => loadAdminData()}>Refresh</button>
             </div>
           </div>
-
-          {adminTab === 'wizard' && (
-            <>
-              {pendingAdminTasks.length > 0 && (
-                <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
-                  <div className="eyebrow">// Pending admin tasks</div>
-                  {pendingAdminTasks.map((t, i) => (
-                    <div key={i} className="admin-task-row">
-                      <button className="step-check" onClick={() => toggleAdminStep(t.user.token, t.step.id)}>☐</button>
-                      <div className="pill warn">{t.user.token}</div>
-                      <div>
-                        <div><strong>{t.step.title}</strong></div>
-                        <div className="small">{t.step.adminLabel || t.step.summary}</div>
-                      </div>
-                    </div>
-                  ))}
+          {pendingAdminTasks.length > 0 && (
+            <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
+              <div className="eyebrow">// Pending admin tasks</div>
+              {pendingAdminTasks.map((t, i) => (
+                <div key={i} className="admin-task-row">
+                  <button className="step-check" onClick={() => toggleAdminStep(t.user.token, t.step.id)}>☐</button>
+                  <div className="pill warn">{t.user.token}</div>
+                  <div>
+                    <div><strong>{t.step.title}</strong></div>
+                    <div className="small">{t.step.adminLabel || t.step.summary}</div>
+                  </div>
                 </div>
-              )}
-
-              <table className="admin-table">
-                <thead>
-                  <tr><th>Token</th><th>IITS</th><th>ADM</th><th>Progress</th><th>Active</th><th>Admin steps</th></tr>
-                </thead>
-                <tbody>
-                  {users.sort((a,b) => a.token.localeCompare(b.token)).map(u => {
-                    const pct = Math.round((allDone(u).length / STEPS.length) * 100);
-                    const pending = STEPS.filter(s => s.owner === 'admin' && isUnlocked(u, s) && !getVisibleDone(u, s));
-                    return (
-                      <tr key={u.token}>
-                        <td><strong>{u.token}</strong></td>
-                        <td className="mono">{u.iits_username || '—'}</td>
-                        <td className="mono">{u.adm_username || '—'}</td>
-                        <td style={{ minWidth: 180 }}>
-                          <div className="progress-bar"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
-                          <div className="small" style={{ marginTop: 6 }}>{pct}%</div>
-                        </td>
-                        <td>{fmtShortDate(u.updated_at || u.lastActive)}</td>
-                        <td>
-                          {STEPS.filter(s => s.owner === 'admin').map(s => {
-                            const done = getVisibleDone(u, s);
-                            return <button key={s.id} className={`btn ${done ? 'btn-secondary' : 'btn-outline'}`} style={{ marginRight: 6, marginBottom: 6, padding: '6px 10px' }} onClick={() => toggleAdminStep(u.token, s.id)}>{done ? '✓' : '☐'} {s.title}</button>;
-                          })}
-                          {pending.length === 0 && <div className="small">No pending admin steps</div>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </>
-          )}
-
-          {adminTab === 'otp-log' && (
-            <div className="otp-log-panel">
-              <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
-                <div className="eyebrow">// Live queue</div>
-                {queue.length === 0 ? <div className="small">Nobody is in the queue right now.</div> : queue.map((q, i) => <div className="queue-row" key={i}><div className="dot active">{q.position || i+1}</div><div><strong>{q.token}</strong><div className="small">{q.name || q.email || ''}</div></div></div>)}
-              </div>
-
-              <table className="admin-table">
-                <thead>
-                  <tr><th>Time</th><th>Event</th><th>Token</th><th>Detail</th><th>Status</th></tr>
-                </thead>
-                <tbody>
-                  {log.length === 0 ? (
-                    <tr><td colSpan="5" className="small" style={{ padding: '16px' }}>No audit entries yet.</td></tr>
-                  ) : (
-                    log.map((entry, i) => (
-                      <tr key={i}>
-                        <td className="mono">{entry.ts || '—'}</td>
-                        <td><strong>{entry.event}</strong></td>
-                        <td className="mono">{entry.token || '—'}</td>
-                        <td>{entry.detail || '—'}</td>
-                        <td><span className={`pill ${entry.status === 'error' ? 'warn' : entry.status === 'warn' ? 'warn' : 'primary'}`}>{entry.status || 'info'}</span></td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+              ))}
             </div>
           )}
+
+          <table className="admin-table">
+            <thead>
+              <tr><th>Token</th><th>IITS</th><th>ADM</th><th>Progress</th><th>Active</th><th>Admin steps</th></tr>
+            </thead>
+            <tbody>
+              {users.sort((a,b) => a.token.localeCompare(b.token)).map(u => {
+                const pct = Math.round((allDone(u).length / STEPS.length) * 100);
+                const pending = STEPS.filter(s => s.owner === 'admin' && isUnlocked(u, s) && !getVisibleDone(u, s));
+                return (
+                  <tr key={u.token}>
+                    <td><strong>{u.token}</strong></td>
+                    <td className="mono">{u.iits_username || '—'}</td>
+                    <td className="mono">{u.adm_username || '—'}</td>
+                    <td style={{ minWidth: 180 }}>
+                      <div className="progress-bar"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
+                      <div className="small" style={{ marginTop: 6 }}>{pct}%</div>
+                    </td>
+                    <td>{fmtShortDate(u.updated_at || u.lastActive)}</td>
+                    <td>
+                      {STEPS.filter(s => s.owner === 'admin').map(s => {
+                        const done = getVisibleDone(u, s);
+                        return <button key={s.id} className={`btn ${done ? 'btn-secondary' : 'btn-outline'}`} style={{ marginRight: 6, marginBottom: 6, padding: '6px 10px' }} onClick={() => toggleAdminStep(u.token, s.id)}>{done ? '✓' : '☐'} {s.title}</button>;
+                      })}
+                      {pending.length === 0 && <div className="small">No pending admin steps</div>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
 
         <div className="side-panel">
@@ -946,24 +1073,16 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
             <div className="small" style={{ marginTop: 10 }}>Seeded for Jathin, Amer, and Christian, but editable from the portal.</div>
             <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={saveConfig}>Save config</button>
           </div>
-          {adminTab === 'wizard' && (
-            <div className="card side-card">
-              <div className="side-card-title">Wizard overview</div>
-              <div className="notes-list">
-                <div className="small">This tab is for onboarding status, usernames, expiry reminders, and admin-owned workflow steps.</div>
-                <div className="small">Use the buttons in the table to complete Jathin/Amer-owned steps.</div>
-              </div>
+          <div className="card side-card">
+            <div className="side-card-title">Live queue</div>
+            {queue.length === 0 ? <div className="small">Nobody is in the queue right now.</div> : queue.map((q, i) => <div className="queue-row" key={i}><div className="dot active">{q.position || i+1}</div><div><strong>{q.token}</strong><div className="small">{q.name || q.email || ''}</div></div></div>)}
+          </div>
+          <div className="card side-card">
+            <div className="side-card-title">Recent audit log</div>
+            <div style={{ maxHeight: 360, overflow: 'auto' }}>
+              {log.slice(0, 15).map((entry, i) => <div key={i} className="small" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}><strong>{entry.event}</strong> · {entry.token || '—'}<br />{entry.detail || ''}</div>)}
             </div>
-          )}
-          {adminTab === 'otp-log' && (
-            <div className="card side-card">
-              <div className="side-card-title">OTP log overview</div>
-              <div className="notes-list">
-                <div className="small">This tab is for operational relay monitoring: queue, claim events, SMS receipt, and OTP delivery trail.</div>
-                <div className="small">Use it when troubleshooting token claims or checking live queue activity.</div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
