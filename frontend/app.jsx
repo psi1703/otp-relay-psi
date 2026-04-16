@@ -487,45 +487,12 @@ function OtpView({ otp, setOtp, claimOtp, retryOtp, resetClaim, sidebar }) {
   const ringTotal = otp.panel === 'otp' ? CONFIG.OTP_DISPLAY_SEC : CONFIG.CLAIM_EXPIRY_SEC;
   const offset = CONFIG.RING_CIRCUMFERENCE * (1 - ringValue / ringTotal);
   const fmt = secs => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2,'0')}`;
-  const inputRefs = React.useRef([]);
 
   function onChar(i, value) {
     const v = (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(-1);
     const next = [...otp.tokenChars];
     next[i] = v;
     setOtp(s => ({ ...s, tokenChars: next }));
-    if (v && i < 2) {
-      requestAnimationFrame(() => inputRefs.current[i + 1]?.focus());
-    }
-  }
-
-  function onKeyDown(i, e) {
-    if (e.key === 'Backspace' && !otp.tokenChars[i] && i > 0) {
-      requestAnimationFrame(() => inputRefs.current[i - 1]?.focus());
-      return;
-    }
-    if (e.key === 'ArrowLeft' && i > 0) {
-      e.preventDefault();
-      inputRefs.current[i - 1]?.focus();
-      return;
-    }
-    if (e.key === 'ArrowRight' && i < 2) {
-      e.preventDefault();
-      inputRefs.current[i + 1]?.focus();
-    }
-  }
-
-  function onPaste(e) {
-    e.preventDefault();
-    const paste = (e.clipboardData.getData('text') || '')
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, '')
-      .slice(0, 3);
-    const next = ['', '', ''];
-    for (let i = 0; i < paste.length; i++) next[i] = paste[i];
-    setOtp(s => ({ ...s, tokenChars: next }));
-    const focusIndex = Math.min(paste.length, 2);
-    requestAnimationFrame(() => inputRefs.current[focusIndex]?.focus());
   }
 
   return (
@@ -537,21 +504,7 @@ function OtpView({ otp, setOtp, claimOtp, retryOtp, resetClaim, sidebar }) {
             <h1 className="h1">Request your OTP</h1>
             <div className="sub">Enter your personal token and claim your slot. The OTP code will appear right here — no email needed.</div>
             <div className="token-wrap">
-              {[0,1,2].map(i => (
-                <input
-                  key={i}
-                  ref={el => (inputRefs.current[i] = el)}
-                  className="token-char mono"
-                  value={otp.tokenChars[i]}
-                  onChange={e => onChar(i, e.target.value)}
-                  onKeyDown={e => onKeyDown(i, e)}
-                  onPaste={onPaste}
-                  placeholder="_"
-                  maxLength={1}
-                  autoComplete="off"
-                  spellCheck="false"
-                />
-              ))}
+              {[0,1,2].map(i => <input key={i} className="token-char mono" value={otp.tokenChars[i]} onChange={e => onChar(i, e.target.value)} placeholder="_" />)}
             </div>
             <div className="token-hint">2 or 3 characters · letters and digits only</div>
             <button className="btn btn-primary" disabled={claimDisabled} onClick={claimOtp}>Claim my slot →</button>
@@ -847,6 +800,7 @@ function HelpView({ faqOpen, setFaqOpen }) {
 }
 
 function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminStep, pendingAdminTasks, saveConfig }) {
+  const [adminTab, setAdminTab] = useState('wizard');
   useEffect(() => {
     if (admin.session && !admin.data) loadAdminData();
   }, [admin.session]);
@@ -891,59 +845,98 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
           <div className="hero-row">
             <div>
               <div className="eyebrow">// Admin dashboard</div>
-              <h1 className="h1">RTA Wizard Progress</h1>
-              <div className="sub">Users, credentials, progress, and admin-owned steps in one view.</div>
+              <h1 className="h1">{adminTab === 'wizard' ? 'RTA Wizard Progress' : 'OTP Log'}</h1>
+              <div className="sub">{adminTab === 'wizard' ? 'Users, credentials, progress, and admin-owned steps in one view.' : 'Audit log and queue activity for the OTP relay.'}</div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
+              <div className="admin-tabbar">
+                <button className={`btn ${adminTab === 'wizard' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setAdminTab('wizard')}>RTA Wizard</button>
+                <button className={`btn ${adminTab === 'otp-log' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setAdminTab('otp-log')}>OTP Log</button>
+              </div>
               <button className="btn btn-secondary" onClick={() => loadAdminData()}>Refresh</button>
             </div>
           </div>
-          {pendingAdminTasks.length > 0 && (
-            <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
-              <div className="eyebrow">// Pending admin tasks</div>
-              {pendingAdminTasks.map((t, i) => (
-                <div key={i} className="admin-task-row">
-                  <button className="step-check" onClick={() => toggleAdminStep(t.user.token, t.step.id)}>☐</button>
-                  <div className="pill warn">{t.user.token}</div>
-                  <div>
-                    <div><strong>{t.step.title}</strong></div>
-                    <div className="small">{t.step.adminLabel || t.step.summary}</div>
-                  </div>
+
+          {adminTab === 'wizard' && (
+            <>
+              {pendingAdminTasks.length > 0 && (
+                <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
+                  <div className="eyebrow">// Pending admin tasks</div>
+                  {pendingAdminTasks.map((t, i) => (
+                    <div key={i} className="admin-task-row">
+                      <button className="step-check" onClick={() => toggleAdminStep(t.user.token, t.step.id)}>☐</button>
+                      <div className="pill warn">{t.user.token}</div>
+                      <div>
+                        <div><strong>{t.step.title}</strong></div>
+                        <div className="small">{t.step.adminLabel || t.step.summary}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+
+              <table className="admin-table">
+                <thead>
+                  <tr><th>Token</th><th>IITS</th><th>ADM</th><th>Progress</th><th>Active</th><th>Admin steps</th></tr>
+                </thead>
+                <tbody>
+                  {users.sort((a,b) => a.token.localeCompare(b.token)).map(u => {
+                    const pct = Math.round((allDone(u).length / STEPS.length) * 100);
+                    const pending = STEPS.filter(s => s.owner === 'admin' && isUnlocked(u, s) && !getVisibleDone(u, s));
+                    return (
+                      <tr key={u.token}>
+                        <td><strong>{u.token}</strong></td>
+                        <td className="mono">{u.iits_username || '—'}</td>
+                        <td className="mono">{u.adm_username || '—'}</td>
+                        <td style={{ minWidth: 180 }}>
+                          <div className="progress-bar"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
+                          <div className="small" style={{ marginTop: 6 }}>{pct}%</div>
+                        </td>
+                        <td>{fmtShortDate(u.updated_at || u.lastActive)}</td>
+                        <td>
+                          {STEPS.filter(s => s.owner === 'admin').map(s => {
+                            const done = getVisibleDone(u, s);
+                            return <button key={s.id} className={`btn ${done ? 'btn-secondary' : 'btn-outline'}`} style={{ marginRight: 6, marginBottom: 6, padding: '6px 10px' }} onClick={() => toggleAdminStep(u.token, s.id)}>{done ? '✓' : '☐'} {s.title}</button>;
+                          })}
+                          {pending.length === 0 && <div className="small">No pending admin steps</div>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
           )}
 
-          <table className="admin-table">
-            <thead>
-              <tr><th>Token</th><th>IITS</th><th>ADM</th><th>Progress</th><th>Active</th><th>Admin steps</th></tr>
-            </thead>
-            <tbody>
-              {users.sort((a,b) => a.token.localeCompare(b.token)).map(u => {
-                const pct = Math.round((allDone(u).length / STEPS.length) * 100);
-                const pending = STEPS.filter(s => s.owner === 'admin' && isUnlocked(u, s) && !getVisibleDone(u, s));
-                return (
-                  <tr key={u.token}>
-                    <td><strong>{u.token}</strong></td>
-                    <td className="mono">{u.iits_username || '—'}</td>
-                    <td className="mono">{u.adm_username || '—'}</td>
-                    <td style={{ minWidth: 180 }}>
-                      <div className="progress-bar"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
-                      <div className="small" style={{ marginTop: 6 }}>{pct}%</div>
-                    </td>
-                    <td>{fmtShortDate(u.updated_at || u.lastActive)}</td>
-                    <td>
-                      {STEPS.filter(s => s.owner === 'admin').map(s => {
-                        const done = getVisibleDone(u, s);
-                        return <button key={s.id} className={`btn ${done ? 'btn-secondary' : 'btn-outline'}`} style={{ marginRight: 6, marginBottom: 6, padding: '6px 10px' }} onClick={() => toggleAdminStep(u.token, s.id)}>{done ? '✓' : '☐'} {s.title}</button>;
-                      })}
-                      {pending.length === 0 && <div className="small">No pending admin steps</div>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          {adminTab === 'otp-log' && (
+            <div className="otp-log-panel">
+              <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
+                <div className="eyebrow">// Live queue</div>
+                {queue.length === 0 ? <div className="small">Nobody is in the queue right now.</div> : queue.map((q, i) => <div className="queue-row" key={i}><div className="dot active">{q.position || i+1}</div><div><strong>{q.token}</strong><div className="small">{q.name || q.email || ''}</div></div></div>)}
+              </div>
+
+              <table className="admin-table">
+                <thead>
+                  <tr><th>Time</th><th>Event</th><th>Token</th><th>Detail</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  {log.length === 0 ? (
+                    <tr><td colSpan="5" className="small" style={{ padding: '16px' }}>No audit entries yet.</td></tr>
+                  ) : (
+                    log.map((entry, i) => (
+                      <tr key={i}>
+                        <td className="mono">{entry.ts || '—'}</td>
+                        <td><strong>{entry.event}</strong></td>
+                        <td className="mono">{entry.token || '—'}</td>
+                        <td>{entry.detail || '—'}</td>
+                        <td><span className={`pill ${entry.status === 'error' ? 'warn' : entry.status === 'warn' ? 'warn' : 'primary'}`}>{entry.status || 'info'}</span></td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <div className="side-panel">
@@ -953,16 +946,24 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
             <div className="small" style={{ marginTop: 10 }}>Seeded for Jathin, Amer, and Christian, but editable from the portal.</div>
             <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={saveConfig}>Save config</button>
           </div>
-          <div className="card side-card">
-            <div className="side-card-title">Live queue</div>
-            {queue.length === 0 ? <div className="small">Nobody is in the queue right now.</div> : queue.map((q, i) => <div className="queue-row" key={i}><div className="dot active">{q.position || i+1}</div><div><strong>{q.token}</strong><div className="small">{q.name || q.email || ''}</div></div></div>)}
-          </div>
-          <div className="card side-card">
-            <div className="side-card-title">Recent audit log</div>
-            <div style={{ maxHeight: 360, overflow: 'auto' }}>
-              {log.slice(0, 15).map((entry, i) => <div key={i} className="small" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}><strong>{entry.event}</strong> · {entry.token || '—'}<br />{entry.detail || ''}</div>)}
+          {adminTab === 'wizard' && (
+            <div className="card side-card">
+              <div className="side-card-title">Wizard overview</div>
+              <div className="notes-list">
+                <div className="small">This tab is for onboarding status, usernames, expiry reminders, and admin-owned workflow steps.</div>
+                <div className="small">Use the buttons in the table to complete Jathin/Amer-owned steps.</div>
+              </div>
             </div>
-          </div>
+          )}
+          {adminTab === 'otp-log' && (
+            <div className="card side-card">
+              <div className="side-card-title">OTP log overview</div>
+              <div className="notes-list">
+                <div className="small">This tab is for operational relay monitoring: queue, claim events, SMS receipt, and OTP delivery trail.</div>
+                <div className="small">Use it when troubleshooting token claims or checking live queue activity.</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
