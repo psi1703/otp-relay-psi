@@ -15,6 +15,9 @@ srvotp26 (Ubuntu 24.04 VM)
 Portal (user's browser)
    ↓  polls /claim-status every 3 seconds
 OTP appears on screen — no email involved
+
+The same portal also hosts the **RTA Access Wizard**, **Help** section, and **Admin** views.
+RTA onboarding progress is server-backed so reminders and progress persist across devices.
 ```
 
 1. User opens the portal → enters their 2 or 3 character token → clicks **Claim my slot**
@@ -47,9 +50,9 @@ otp-relay/
 ├── .gitignore
 ├── README.md
 ├── frontend/
-│   ├── index.html           # Portal markup (structure only)
-│   ├── style.css            # All styles — INIT design system
-│   └── app.js               # All UI logic — edit this for frontend changes
+│   ├── index.html           # Portal shell — loads React 18 + Babel and mounts the app
+│   ├── style.css            # All styles — INIT / RS design tokens and light theme
+│   └── app.jsx              # React UI logic for OTP, Wizard, Help, and Admin views
 ├── nginx/
 │   └── otp-relay.conf       # nginx reverse proxy config
 ├── scripts/
@@ -75,6 +78,8 @@ otp-relay/
 | Data directory | `/opt/otp-relay/data/` |
 | Audit log | `/opt/otp-relay/data/audit.log` |
 | User list | `/opt/otp-relay/data/users.xlsx` |
+| Wizard progress store | `/opt/otp-relay/data/wizard_progress.json` |
+| Admin auth store | `/opt/otp-relay/data/admin_auth.json` |
 | Python venv | `/opt/otp-relay/venv/` (not in git — created by install.sh) |
 | TLS certificate | `/etc/ssl/otp-relay/server.crt` |
 | TLS key | `/etc/ssl/otp-relay/server.key` |
@@ -99,7 +104,7 @@ otp-relay/
 ├── frontend/
 │   ├── index.html               root:root         644
 │   ├── style.css                root:root         644
-│   └── app.js                   root:root         644
+│   └── app.jsx                  root:root         644
 ├── nginx/
 │   └── otp-relay.conf.template  root:root         644
 ├── systemd/
@@ -108,7 +113,9 @@ otp-relay/
 ├── venv/                        root:root         755  (not in git)
 └── data/                        otprelay:otprelay 700  (not in git)
     ├── users.xlsx               otprelay:otprelay 600
-    └── audit.log                otprelay:otprelay 600
+    ├── audit.log                otprelay:otprelay 600
+    ├── wizard_progress.json     otprelay:otprelay 600
+    └── admin_auth.json          otprelay:otprelay 600
 ```
 
 ---
@@ -301,6 +308,26 @@ This copies the file, sets correct permissions, and reloads the user list in the
 
 Rows that fail validation are skipped and written to the audit log as `import_skipped` events with the exact row number and reason.
 
+
+## RTA Wizard Storage (server-backed)
+
+The RTA Access Wizard stores profile fields and progress on the server so data follows the user across devices.
+
+Stored in `/opt/otp-relay/data/wizard_progress.json`:
+- token
+- display name
+- `IITS_*` username
+- `ADM_*` username
+- password reset dates / reminder dates
+- VPN reminder date
+- step completion state
+- last updated timestamp
+
+Admin authentication is stored separately in `/opt/otp-relay/data/admin_auth.json`.
+
+> These files are runtime data and are intentionally not tracked in git.
+
+
 ---
 
 ## Exchange SMTP (diagnostics only)
@@ -422,6 +449,9 @@ curl -sk https://srvotp26.init-db.lan/admin/queue | python3 -m json.tool
 
 # All loaded users
 curl -sk https://srvotp26.init-db.lan/admin/users | python3 -m json.tool
+
+# Server-backed RTA wizard progress (admin-auth protected)
+curl -sk https://srvotp26.init-db.lan/admin/wizard
 
 # Test Exchange SMTP connectivity
 curl -sk https://srvotp26.init-db.lan/admin/smtp-test | python3 -m json.tool
