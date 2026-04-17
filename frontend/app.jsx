@@ -201,11 +201,49 @@ function fromDateInputValue(v) {
   return v ? new Date(`${v}T00:00:00`).toISOString() : null;
 }
 
+const TOKEN_ENV_ACCESS = {
+  BMI: { test_env: '', prod_env: '' },
+  CSG: { test_env: '', prod_env: '' },
+  GOE: { test_env: '', prod_env: '' },
+  HAD: { test_env: '', prod_env: '' },
+  LNA: { test_env: '', prod_env: 'Mobile Statistics' },
+  JYN: { test_env: '', prod_env: '' },
+  STN: { test_env: '', prod_env: '' },
+  TTR: { test_env: '', prod_env: 'Mobile Statistics' },
+  YSH: { test_env: '', prod_env: '' },
+  JNB: { test_env: '', prod_env: '' },
+  KTV: { test_env: '', prod_env: '' },
+  FAL: { test_env: '', prod_env: '' },
+  PZ: { test_env: '', prod_env: 'Mobile Statistics' },
+  RBM: { test_env: '', prod_env: '' },
+  GAL: { test_env: 'Mobile Guard', prod_env: 'Mobile Guard' },
+  BHI: { test_env: '', prod_env: '' },
+  MRZ: { test_env: 'Mobile Plan', prod_env: 'Mobile Plan' },
+  TOB: { test_env: 'Mobile Plan', prod_env: 'Mobile Plan' },
+  KG: { test_env: '', prod_env: '' },
+};
+
 function fmtShortDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '—';
   return d.toLocaleDateString();
+}
+
+function fmtDubaiDateTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-GB', {
+    timeZone: 'Asia/Dubai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).replace(',', '');
 }
 
 function normalizeToken(value) {
@@ -223,6 +261,8 @@ function emptyWizardUser(token = '', display_name = '') {
     iits_pw_date: null,
     adm_pw_date: null,
     vpn_date: null,
+    test_env: '',
+    prod_env: '',
   };
 }
 
@@ -250,6 +290,8 @@ function mergeAdminUsers(wizardUsers = [], loadedUsers = []) {
         iits_pw_date: wizard.iits_pw_date || null,
         adm_pw_date: wizard.adm_pw_date || null,
         vpn_date: wizard.vpn_date || null,
+        test_env: wizard.test_env || (TOKEN_ENV_ACCESS[token] && TOKEN_ENV_ACCESS[token].test_env) || '',
+        prod_env: wizard.prod_env || (TOKEN_ENV_ACCESS[token] && TOKEN_ENV_ACCESS[token].prod_env) || '',
         updated_at: wizard.updated_at || wizard.lastActive || null,
         lastActive: wizard.lastActive || wizard.updated_at || null,
       };
@@ -274,6 +316,143 @@ function Logo() {
       <text x="0" y="42" fontFamily="DM Sans, sans-serif" fontSize="8.5" fontWeight="400" fill="#B0B0B0" letterSpacing="0.04em">The Future of Mobility</text>
     </svg>
   );
+}
+
+
+const RS = {
+  neutralWhite: '#FFFFFF',
+  neutral50: '#FAFAFA',
+  neutral100: '#F2F2F2',
+  neutral200: '#E1E1E1',
+  neutral300: '#D4D4D4',
+  neutral700: '#656565',
+  neutral900: '#363A3B',
+  primary50: '#F2F7FC',
+  primary100: '#E3EFF9',
+  primary800: '#006DCC',
+  primary900: '#233A4E',
+  success50: '#F3FCF2',
+  success100: '#E7F8E4',
+  success500: '#46A048',
+  warning50: '#FFF9EB',
+  warning100: '#FFF2D7',
+  warning500: '#F59C34',
+  error50: '#FFF8F6',
+  error100: '#FFF1EC',
+  error500: '#ED502C',
+};
+
+function filterChipStyle(kind, active) {
+  const base = {
+    borderRadius: 4,
+    border: `1px solid ${RS.neutral300}`,
+    padding: '5px 10px',
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '.04em',
+    background: RS.neutralWhite,
+    color: RS.neutral900,
+    cursor: 'pointer',
+    lineHeight: 1.1,
+    textTransform: 'uppercase',
+    fontFamily: 'JetBrains Mono, monospace',
+  };
+  if (!active) return base;
+  if (kind === 'all') return { ...base, background: RS.primary100, border: `1px solid ${RS.primary800}`, color: RS.primary800 };
+  if (kind === 'info') return { ...base, background: RS.primary50, border: `1px solid ${RS.primary800}`, color: RS.primary800 };
+  if (kind === 'warn') return { ...base, background: RS.warning100, border: `1px solid ${RS.warning500}`, color: RS.warning500 };
+  if (kind === 'error') return { ...base, background: RS.error100, border: `1px solid ${RS.error500}`, color: RS.error500 };
+  return base;
+}
+
+function statusPillStyle(status) {
+  const base = {
+    display: 'inline-block',
+    borderRadius: 999,
+    padding: '6px 12px',
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '.06em',
+    textTransform: 'uppercase',
+    border: '1px solid transparent',
+  };
+  if (status === 'error') return { ...base, background: RS.error100, borderColor: RS.error500, color: RS.error500 };
+  if (status === 'warn') return { ...base, background: RS.warning100, borderColor: RS.warning500, color: RS.warning500 };
+  return { ...base, background: RS.primary50, borderColor: RS.primary800, color: RS.primary800 };
+}
+
+
+function exportWizardProgressPdf(users) {
+  const safeUsers = [...(users || [])]
+    .filter(user => allDone(user).length > 0)
+    .sort((a, b) => (a.token || '').localeCompare(b.token || ''));
+  const rows = safeUsers.map(user => {
+    const doneSteps = STEPS.filter(step => getVisibleDone(user, step));
+    const pct = Math.round((allDone(user).length / STEPS.length) * 100);
+    const doneHtml = doneSteps.length
+      ? `<ol style="margin:6px 0 0 18px;padding:0;">${doneSteps.map(step => `<li style="margin:2px 0;">${step.title}</li>`).join('')}</ol>`
+      : '<div style="color:#656565;">No completed steps yet.</div>';
+    return `
+      <div style="border:1px solid #E1E1E1;border-radius:12px;padding:16px 18px;margin:0 0 14px;background:#FFFFFF;page-break-inside:avoid;">
+        <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;">
+          <div>
+            <div style="font-size:18px;font-weight:700;color:#363A3B;">${user.token || '—'}${user.display_name ? ` — ${user.display_name}` : ''}</div>
+            <div style="font-size:12px;color:#656565;margin-top:4px;">${user.email || ''}</div>
+          </div>
+          <div style="padding:6px 12px;border-radius:999px;background:#E3EFF9;color:#006DCC;font-size:12px;font-weight:700;">${pct}% complete</div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;">
+          <tr>
+            <td style="padding:6px 8px;border:1px solid #E1E1E1;background:#FAFAFA;font-weight:600;width:18%;">IITS Username</td>
+            <td style="padding:6px 8px;border:1px solid #E1E1E1;">${user.iits_username || '—'}</td>
+            <td style="padding:6px 8px;border:1px solid #E1E1E1;background:#FAFAFA;font-weight:600;width:18%;">ADM Username</td>
+            <td style="padding:6px 8px;border:1px solid #E1E1E1;">${user.adm_username || '—'}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 8px;border:1px solid #E1E1E1;background:#FAFAFA;font-weight:600;">Test ENV</td>
+            <td style="padding:6px 8px;border:1px solid #E1E1E1;">${user.test_env || '—'}</td>
+            <td style="padding:6px 8px;border:1px solid #E1E1E1;background:#FAFAFA;font-weight:600;">Prod ENV</td>
+            <td style="padding:6px 8px;border:1px solid #E1E1E1;">${user.prod_env || '—'}</td>
+          </tr>
+        </table>
+
+        <div style="margin-top:12px;">
+          <div style="font-size:12px;font-weight:700;color:#363A3B;text-transform:uppercase;letter-spacing:.08em;">Completed steps</div>
+          ${doneHtml}
+        </div>
+      </div>`;
+  }).join('');
+
+  const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>RTA Wizard Progress Export</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 24px; color: #363A3B; background: #FFFFFF; }
+          h1 { margin: 0; font-size: 28px; }
+          .sub { margin-top: 6px; color: #656565; font-size: 13px; }
+          .meta { margin: 14px 0 22px; font-size: 12px; color: #656565; }
+          @media print { body { margin: 16px; } }
+        </style>
+      </head>
+      <body>
+        <h1>RTA Wizard Progress</h1>
+        <div class="sub">Export for sharing with RTA</div>
+        <div class="meta">Generated: ${new Date().toLocaleString()} · Users with progress: ${safeUsers.length}</div>
+        ${rows || '<div>No users with progress available for export.</div>'}
+      </body>
+    </html>
+  `;
+  const win = window.open('', '_blank', 'width=1100,height=900');
+  if (!win) return;
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { try { win.print(); } catch (e) {} }, 250);
 }
 
 function App() {
@@ -547,7 +726,6 @@ function App() {
       <div className="card side-card">
         <div className="side-card-title">Quick links</div>
         <div className="quick-links">
-          <a className="quick-link" href="https://srvotp26.init-db.lan"><span>OTP Relay</span><small>LAN</small></a>
           <a className="quick-link" href="https://direct.rta.ae"><span>RTA Automation Portal</span><small>Portal</small></a>
           <a className="quick-link" href="https://srvterminal.init-db.lan"><span>Terminal Server</span><small>UAE-only workaround</small></a>
           <a className="quick-link" href="https://ettisal.rta.ae/vendors"><span>Ivanti VPN</span><small>ettisal.rta.ae</small></a>
@@ -966,7 +1144,16 @@ function HelpView({ faqOpen, setFaqOpen }) {
   );
 }
 
+function completedStepsList(user) {
+  return STEPS.filter(step => getVisibleDone(user, step));
+}
+
 function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminStep, pendingAdminTasks, saveConfig }) {
+  const [adminTab, setAdminTab] = useState('wizard');
+  const [logStatus, setLogStatus] = useState('all');
+  const [logEvent, setLogEvent] = useState('');
+  const [logSearch, setLogSearch] = useState('');
+
   useEffect(() => {
     if (admin.session && !admin.data) loadAdminData();
   }, [admin.session]);
@@ -974,7 +1161,7 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
   if (!admin.session) {
     return (
       <div className="auth-wrap">
-        <div className="card main-panel">
+        <div className="card main-panel" style={{ minWidth: 0, overflow: "hidden", width: "100%" }}>
           <div className="eyebrow">// Admin access</div>
           <h1 className="h1">{admin.mode === 'setup' ? 'Set admin credential' : 'Admin login'}</h1>
           <div className="sub">Use a password or 4-digit PIN. This is shared for portal admins.</div>
@@ -996,6 +1183,42 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
   const users = admin.data?.users || [];
   const queue = admin.data?.queue || [];
   const log = admin.data?.log || [];
+  const eventOptions = [...new Set(log.map(entry => entry.event).filter(Boolean))].sort();
+
+  const filteredLog = log.filter(entry => {
+    if (logStatus !== 'all' && (entry.status || 'info') !== logStatus) return false;
+    if (logEvent && entry.event !== logEvent) return false;
+    if (logSearch.trim()) {
+      const q = logSearch.trim().toLowerCase();
+      const hay = `${entry.token || ''} ${entry.event || ''} ${entry.detail || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  function renderNextStep(user) {
+    const pending = STEPS.filter(s => s.owner === 'admin' && isUnlocked(user, s) && !getVisibleDone(user, s));
+    if (pending.length === 0) return <div className="small">No pending admin step</div>;
+    const step = pending[0];
+    return (
+      <div>
+        <div><strong>{step.title}</strong></div>
+        <div className="small">{step.adminLabel || step.summary}</div>
+      </div>
+    );
+  }
+
+  function renderCompletedSteps(user) {
+    const done = completedStepsList(user);
+    if (done.length === 0) return <div className="small">No completed steps yet</div>;
+    return (
+      <div>
+        {done.map(step => (
+          <div key={step.id} className="small" style={{ marginBottom: 4 }}>✓ {step.title}</div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="admin-layout">
@@ -1006,83 +1229,173 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
         <div className="card stat-card"><div className="stat-label">Audit entries</div><div className="stat-value">{admin.data?.logTotal || 0}</div></div>
       </div>
 
-      <div className="wide-layout">
+      <div className="wide-layout" style={{ gridTemplateColumns: "minmax(0, 3.1fr) minmax(260px, 0.75fr)", alignItems: "start", gap: 16 }}>
         <div className="card main-panel">
           <div className="hero-row">
             <div>
               <div className="eyebrow">// Admin dashboard</div>
-              <h1 className="h1">RTA Wizard Progress</h1>
-              <div className="sub">Users, credentials, progress, and admin-owned steps in one view.</div>
+              <h1 className="h1">{adminTab === 'wizard' ? 'RTA Wizard Progress' : 'OTP Log'}</h1>
+              <div className="sub">{adminTab === 'wizard' ? 'Users, credentials, progress, and next admin-owned step in one view.' : 'Filter and search the relay log by token, category, and status.'}</div>
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn btn-secondary" onClick={() => loadAdminData()}>Refresh</button>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'nowrap' }}>
+              <div className="admin-tabbar" style={{ display: 'flex', flexDirection: 'row', gap: 8, flexWrap: 'nowrap', alignItems: 'center' }}>
+                <button className="btn" style={{ width: 'auto', whiteSpace: 'nowrap', background: adminTab === 'wizard' ? RS.primary800 : RS.neutralWhite, color: adminTab === 'wizard' ? RS.neutralWhite : RS.neutral900, border: adminTab === 'wizard' ? 'none' : `1px solid ${RS.neutral300}` }} onClick={() => setAdminTab('wizard')}>RTA Wizard</button>
+                <button className="btn" style={{ width: 'auto', whiteSpace: 'nowrap', background: adminTab === 'otp-log' ? RS.primary800 : RS.neutralWhite, color: adminTab === 'otp-log' ? RS.neutralWhite : RS.neutral900, border: adminTab === 'otp-log' ? 'none' : `1px solid ${RS.neutral300}` }} onClick={() => setAdminTab('otp-log')}>OTP Log</button>
+              </div>
+              {adminTab === 'wizard' && <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => exportWizardProgressPdf(users)}>Export PDF</button>}
+              <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => loadAdminData()}>Refresh</button>
             </div>
           </div>
-          {pendingAdminTasks.length > 0 && (
-            <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
-              <div className="eyebrow">// Pending admin tasks</div>
-              {pendingAdminTasks.map((t, i) => (
-                <div key={i} className="admin-task-row">
-                  <button className="step-check" onClick={() => toggleAdminStep(t.user.token, t.step.id)}>☐</button>
-                  <div className="pill warn">{t.user.token}</div>
-                  <div>
-                    <div><strong>{t.step.title}</strong></div>
-                    <div className="small">{t.step.adminLabel || t.step.summary}</div>
-                  </div>
+
+          {adminTab === 'wizard' && (
+            <>
+              {pendingAdminTasks.length > 0 && (
+                <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
+                  <div className="eyebrow">// Pending admin tasks</div>
+                  {pendingAdminTasks.map((t, i) => (
+                    <div key={i} className="admin-task-row">
+                      <button className="btn btn-outline" style={{ padding: '6px 10px', minWidth: 132 }} onClick={() => toggleAdminStep(t.user.token, t.step.id)}>Mark complete</button>
+                      <div className="pill warn">{t.user.token}</div>
+                      <div>
+                        <div><strong>{t.step.title}</strong></div>
+                        <div className="small">{t.step.adminLabel || t.step.summary}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+
+              <div style={{ width: '100%', overflowX: 'auto', paddingBottom: 4 }}>
+                <table className="admin-table" style={{ width: 'max-content', minWidth: '100%', tableLayout: 'auto' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ minWidth: 54, whiteSpace: 'nowrap' }}>Token</th>
+                      <th style={{ minWidth: 70, whiteSpace: 'nowrap' }}>IITS</th>
+                      <th style={{ minWidth: 70, whiteSpace: 'nowrap' }}>ADM</th>
+                      <th style={{ minWidth: 128, whiteSpace: 'nowrap' }}>Test ENV</th>
+                      <th style={{ minWidth: 148, whiteSpace: 'nowrap' }}>Prod ENV</th>
+                      <th style={{ minWidth: 170, whiteSpace: 'nowrap' }}>Progress</th>
+                      <th style={{ minWidth: 104, whiteSpace: 'nowrap' }}>Activity</th>
+                      <th style={{ minWidth: 320 }}>Completed Steps</th>
+                      <th style={{ minWidth: 340 }}>Next Step</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {users.sort((a,b) => a.token.localeCompare(b.token)).map(u => {
+                    const pct = Math.round((allDone(u).length / STEPS.length) * 100);
+                    return (
+                      <tr key={u.token}>
+                        <td><strong>{u.token}</strong></td>
+                        <td className="mono">{u.iits_username || '—'}</td>
+                        <td className="mono">{u.adm_username || '—'}</td>
+                        <td style={{ minWidth: 140, whiteSpace: 'nowrap' }}>{u.test_env || '—'}</td>
+                        <td style={{ minWidth: 160, whiteSpace: 'nowrap' }}>{u.prod_env || '—'}</td>
+                        <td style={{ minWidth: 180 }}>
+                          <div className="progress-bar"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
+                          <div className="small" style={{ marginTop: 6 }}>{pct}%</div>
+                        </td>
+                        <td style={{ minWidth: 110, whiteSpace: 'nowrap' }}>{fmtShortDate(u.updated_at || u.lastActive)}</td>
+                        <td style={{ minWidth: 220, verticalAlign: 'top' }}>{renderCompletedSteps(u)}</td>
+                        <td style={{ minWidth: 220, verticalAlign: 'top' }}>{renderNextStep(u)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                </table>
+              </div>
+            </>
           )}
 
-          <table className="admin-table">
-            <thead>
-              <tr><th>Token</th><th>IITS</th><th>ADM</th><th>Progress</th><th>Active</th><th>Admin steps</th></tr>
-            </thead>
-            <tbody>
-              {users.sort((a,b) => a.token.localeCompare(b.token)).map(u => {
-                const pct = Math.round((allDone(u).length / STEPS.length) * 100);
-                const pending = STEPS.filter(s => s.owner === 'admin' && isUnlocked(u, s) && !getVisibleDone(u, s));
-                return (
-                  <tr key={u.token}>
-                    <td><strong>{u.token}</strong></td>
-                    <td className="mono">{u.iits_username || '—'}</td>
-                    <td className="mono">{u.adm_username || '—'}</td>
-                    <td style={{ minWidth: 180 }}>
-                      <div className="progress-bar"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
-                      <div className="small" style={{ marginTop: 6 }}>{pct}%</div>
-                    </td>
-                    <td>{fmtShortDate(u.updated_at || u.lastActive)}</td>
-                    <td>
-                      {STEPS.filter(s => s.owner === 'admin').map(s => {
-                        const done = getVisibleDone(u, s);
-                        return <button key={s.id} className={`btn ${done ? 'btn-secondary' : 'btn-outline'}`} style={{ marginRight: 6, marginBottom: 6, padding: '6px 10px' }} onClick={() => toggleAdminStep(u.token, s.id)}>{done ? '✓' : '☐'} {s.title}</button>;
-                      })}
-                      {pending.length === 0 && <div className="small">No pending admin steps</div>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          {adminTab === 'otp-log' && (
+            <>
+              <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14, padding: '14px 16px' }}>
+                <div className="hero-row" style={{ marginBottom: 10, paddingBottom: 10 }}>
+                  <div>
+                    <div className="side-card-title" style={{ marginBottom: 0 }}>Audit Log <span className="small" style={{ fontWeight: 400 }}>(newest first)</span></div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="small mono" style={{ textTransform: 'uppercase', letterSpacing: '.08em' }}>Status</span>
+                    {['all', 'info', 'warn', 'error'].map(status => (
+                      <button
+                        key={status}
+                        style={filterChipStyle(status, logStatus === status)}
+                        onClick={() => setLogStatus(status)}
+                      >
+                        {status.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="small mono" style={{ textTransform: 'uppercase', letterSpacing: '.08em' }}>Event</span>
+                    <select value={logEvent} onChange={e => setLogEvent(e.target.value)} style={{ minWidth: 165, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+                      <option value="">All events</option>
+                      {eventOptions.map(ev => <option key={ev} value={ev}>{ev}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
+                  <input value={logSearch} onChange={e => setLogSearch(e.target.value)} placeholder="token or detail..." style={{ flex: '0 1 180px', minWidth: 180, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }} />
+                </div>
+              </div>
+
+              <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
+                <div className="eyebrow">// Live queue</div>
+                {queue.length === 0 ? <div className="small">Nobody is in the queue right now.</div> : queue.map((q, i) => <div className="queue-row" key={i}><div className="dot active">{q.position || i+1}</div><div><strong>{q.token}</strong><div className="small">{q.name || q.email || ''}</div></div></div>)}
+              </div>
+
+              <table className="admin-table">
+                <thead>
+                  <tr><th>Time</th><th>Event</th><th>Token</th><th>Detail</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  {filteredLog.length === 0 ? (
+                    <tr><td colSpan="5" className="small" style={{ padding: '16px' }}>No matching audit entries.</td></tr>
+                  ) : (
+                    filteredLog.map((entry, i) => (
+                      <tr key={i}>
+                        <td className="mono">{fmtDubaiDateTime(entry.ts)}</td>
+                        <td><strong>{entry.event}</strong></td>
+                        <td className="mono">{entry.token || '—'}</td>
+                        <td>{entry.detail || '—'}</td>
+                        <td><span style={statusPillStyle(entry.status || 'info')}>{entry.status || 'info'}</span></td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </>
+          )}
         </div>
 
-        <div className="side-panel">
+        <div className="side-panel" style={{ minWidth: 260, maxWidth: 340 }}>
           <div className="card side-card">
             <div className="side-card-title">Admin token config</div>
             <div className="field"><label>Admin tokens</label><input value={admin.configTokens} onChange={e => setAdmin(s => ({ ...s, configTokens: e.target.value }))} /></div>
             <div className="small" style={{ marginTop: 10 }}>Seeded for Jathin, Amer, and Christian, but editable from the portal.</div>
             <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={saveConfig}>Save config</button>
           </div>
-          <div className="card side-card">
-            <div className="side-card-title">Live queue</div>
-            {queue.length === 0 ? <div className="small">Nobody is in the queue right now.</div> : queue.map((q, i) => <div className="queue-row" key={i}><div className="dot active">{q.position || i+1}</div><div><strong>{q.token}</strong><div className="small">{q.name || q.email || ''}</div></div></div>)}
-          </div>
-          <div className="card side-card">
-            <div className="side-card-title">Recent audit log</div>
-            <div style={{ maxHeight: 360, overflow: 'auto' }}>
-              {log.slice(0, 15).map((entry, i) => <div key={i} className="small" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}><strong>{entry.event}</strong> · {entry.token || '—'}<br />{entry.detail || ''}</div>)}
+
+          {adminTab === 'wizard' && (
+            <div className="card side-card">
+              <div className="side-card-title">Wizard overview</div>
+              <div className="notes-list">
+                <div className="small">This tab is for onboarding status, usernames, reminder dates, and the next admin-owned step for each user.</div>
+                <div className="small">Use the pending tasks panel to mark admin actions complete.</div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {adminTab === 'otp-log' && (
+            <div className="card side-card">
+              <div className="side-card-title">OTP log overview</div>
+              <div className="notes-list">
+                <div className="small">Filter by event category and status, or search using a user token such as SCH.</div>
+                <div className="small">Use this tab for operational relay troubleshooting and queue visibility.</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
