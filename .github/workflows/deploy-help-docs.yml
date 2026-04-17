@@ -7,43 +7,28 @@ on:
       - "docs/help/**"
       - "scripts/build_help_docs.py"
       - ".github/workflows/deploy-help-docs.yml"
+  workflow_dispatch:
 
 jobs:
   deploy-help-docs:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, ARM64]
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - name: Use system Python
+        run: python3 --version
 
       - name: Install build dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install markdown pyyaml
+          python3 -m pip install --break-system-packages markdown pyyaml
 
       - name: Build help docs
         run: |
-          python scripts/build_help_docs.py
+          python3 scripts/build_help_docs.py
 
-      - name: Set up SSH
+      - name: Confirm generated files
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.PI_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "${{ secrets.PI_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Deploy generated help content
-        run: |
-          rsync -avz --delete frontend/help/             "${{ secrets.PI_USER }}@${{ secrets.PI_HOST }}:/opt/otp-relay/frontend/help/"
-
-      - name: Fix ownership and permissions
-        run: |
-          ssh "${{ secrets.PI_USER }}@${{ secrets.PI_HOST }}"             "sudo chown -R root:root /opt/otp-relay/frontend/help && sudo find /opt/otp-relay/frontend/help -type f -exec chmod 644 {} \\;"
-
-      - name: Finish
-        run: echo "Help docs deployed."
+          ls -R frontend/help
+          cat frontend/help/manifest.json
