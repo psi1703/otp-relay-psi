@@ -8,7 +8,6 @@ slug: overview
 # RTA Servers Access Guide
 
 This section provides a single entry point for all RTA access topics.
-This is a test.....
 
 ## Topics
 
@@ -37,4 +36,4 @@ This is a test.....
 
 ## Maintainers
 
-Keep this page brief. Put detailed steps in the topic pages and keep screenshots in `docs/help/assets/`. This is a test
+Keep this page brief. Put detailed steps in the topic pages and keep screenshots in `docs/help/assets/`
