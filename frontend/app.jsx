@@ -201,104 +201,12 @@ function fromDateInputValue(v) {
   return v ? new Date(`${v}T00:00:00`).toISOString() : null;
 }
 
-const TOKEN_ENV_ACCESS = {
-  BMI: { test_env: '', prod_env: '' },
-  CSG: { test_env: '', prod_env: '' },
-  GOE: { test_env: '', prod_env: '' },
-  HAD: { test_env: '', prod_env: '' },
-  LNA: { test_env: '', prod_env: 'Mobile Statistics' },
-  JYN: { test_env: '', prod_env: '' },
-  STN: { test_env: '', prod_env: '' },
-  TTR: { test_env: '', prod_env: 'Mobile Statistics' },
-  YSH: { test_env: '', prod_env: '' },
-  JNB: { test_env: '', prod_env: '' },
-  KTV: { test_env: '', prod_env: '' },
-  FAL: { test_env: '', prod_env: '' },
-  PZ: { test_env: '', prod_env: 'Mobile Statistics' },
-  RBM: { test_env: '', prod_env: '' },
-  GAL: { test_env: 'Mobile Guard', prod_env: 'Mobile Guard' },
-  BHI: { test_env: '', prod_env: '' },
-  MRZ: { test_env: 'Mobile Plan', prod_env: 'Mobile Plan' },
-  TOB: { test_env: 'Mobile Plan', prod_env: 'Mobile Plan' },
-  KG: { test_env: '', prod_env: '' },
-};
-
 function fmtShortDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '—';
   return d.toLocaleDateString();
 }
-
-function fmtDubaiDateTime(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
-  return d.toLocaleString('en-GB', {
-    timeZone: 'Asia/Dubai',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).replace(',', '');
-}
-
-function normalizeToken(value) {
-  return String(value || '').trim().toUpperCase();
-}
-
-function emptyWizardUser(token = '', display_name = '') {
-  return {
-    token,
-    display_name,
-    iits_username: '',
-    adm_username: '',
-    completed: [],
-    adminCompleted: [],
-    iits_pw_date: null,
-    adm_pw_date: null,
-    vpn_date: null,
-    test_env: '',
-    prod_env: '',
-  };
-}
-
-function mergeAdminUsers(wizardUsers = [], loadedUsers = []) {
-  const wizardMap = new Map((wizardUsers || []).map(u => [normalizeToken(u.token), u]));
-  const allTokens = new Set([
-    ...(loadedUsers || []).map(u => normalizeToken(u.token)),
-    ...(wizardUsers || []).map(u => normalizeToken(u.token)),
-  ]);
-
-  return [...allTokens]
-    .filter(Boolean)
-    .map(token => {
-      const base = (loadedUsers || []).find(u => normalizeToken(u.token) === token) || {};
-      const wizard = wizardMap.get(token) || {};
-      return {
-        token,
-        name: base.name || wizard.name || '',
-        email: base.email || wizard.email || '',
-        display_name: wizard.display_name || base.name || '',
-        iits_username: wizard.iits_username || '',
-        adm_username: wizard.adm_username || '',
-        completed: wizard.completed || [],
-        adminCompleted: wizard.adminCompleted || [],
-        iits_pw_date: wizard.iits_pw_date || null,
-        adm_pw_date: wizard.adm_pw_date || null,
-        vpn_date: wizard.vpn_date || null,
-        test_env: wizard.test_env || (TOKEN_ENV_ACCESS[token] && TOKEN_ENV_ACCESS[token].test_env) || '',
-        prod_env: wizard.prod_env || (TOKEN_ENV_ACCESS[token] && TOKEN_ENV_ACCESS[token].prod_env) || '',
-        updated_at: wizard.updated_at || wizard.lastActive || null,
-        lastActive: wizard.lastActive || wizard.updated_at || null,
-      };
-    })
-    .sort((a, b) => a.token.localeCompare(b.token));
-}
-
 
 function Logo() {
   return (
@@ -318,189 +226,29 @@ function Logo() {
   );
 }
 
-
-const RS = {
-  neutralWhite: '#FFFFFF',
-  neutral50: '#FAFAFA',
-  neutral100: '#F2F2F2',
-  neutral200: '#E1E1E1',
-  neutral300: '#D4D4D4',
-  neutral700: '#656565',
-  neutral900: '#363A3B',
-  primary50: '#F2F7FC',
-  primary100: '#E3EFF9',
-  primary800: '#006DCC',
-  primary900: '#233A4E',
-  success50: '#F3FCF2',
-  success100: '#E7F8E4',
-  success500: '#46A048',
-  warning50: '#FFF9EB',
-  warning100: '#FFF2D7',
-  warning500: '#F59C34',
-  error50: '#FFF8F6',
-  error100: '#FFF1EC',
-  error500: '#ED502C',
-};
-
-function filterChipStyle(kind, active) {
-  const base = {
-    borderRadius: 4,
-    border: `1px solid ${RS.neutral300}`,
-    padding: '5px 10px',
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: '.04em',
-    background: RS.neutralWhite,
-    color: RS.neutral900,
-    cursor: 'pointer',
-    lineHeight: 1.1,
-    textTransform: 'uppercase',
-    fontFamily: 'JetBrains Mono, monospace',
-  };
-  if (!active) return base;
-  if (kind === 'all') return { ...base, background: RS.primary100, border: `1px solid ${RS.primary800}`, color: RS.primary800 };
-  if (kind === 'info') return { ...base, background: RS.primary50, border: `1px solid ${RS.primary800}`, color: RS.primary800 };
-  if (kind === 'warn') return { ...base, background: RS.warning100, border: `1px solid ${RS.warning500}`, color: RS.warning500 };
-  if (kind === 'error') return { ...base, background: RS.error100, border: `1px solid ${RS.error500}`, color: RS.error500 };
-  return base;
-}
-
-function statusPillStyle(status) {
-  const base = {
-    display: 'inline-block',
-    borderRadius: 999,
-    padding: '6px 12px',
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: '.06em',
-    textTransform: 'uppercase',
-    border: '1px solid transparent',
-  };
-  if (status === 'error') return { ...base, background: RS.error100, borderColor: RS.error500, color: RS.error500 };
-  if (status === 'warn') return { ...base, background: RS.warning100, borderColor: RS.warning500, color: RS.warning500 };
-  return { ...base, background: RS.primary50, borderColor: RS.primary800, color: RS.primary800 };
-}
-
-
-function exportWizardProgressPdf(users) {
-  const safeUsers = [...(users || [])]
-    .filter(user => allDone(user).length > 0)
-    .sort((a, b) => (a.token || '').localeCompare(b.token || ''));
-  const rows = safeUsers.map(user => {
-    const doneSteps = STEPS.filter(step => getVisibleDone(user, step));
-    const pct = Math.round((allDone(user).length / STEPS.length) * 100);
-    const doneHtml = doneSteps.length
-      ? `<ol style="margin:6px 0 0 18px;padding:0;">${doneSteps.map(step => `<li style="margin:2px 0;">${step.title}</li>`).join('')}</ol>`
-      : '<div style="color:#656565;">No completed steps yet.</div>';
-    return `
-      <div style="border:1px solid #E1E1E1;border-radius:12px;padding:16px 18px;margin:0 0 14px;background:#FFFFFF;page-break-inside:avoid;">
-        <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;">
-          <div>
-            <div style="font-size:18px;font-weight:700;color:#363A3B;">${user.token || '—'}${user.display_name ? ` — ${user.display_name}` : ''}</div>
-            <div style="font-size:12px;color:#656565;margin-top:4px;">${user.email || ''}</div>
-          </div>
-          <div style="padding:6px 12px;border-radius:999px;background:#E3EFF9;color:#006DCC;font-size:12px;font-weight:700;">${pct}% complete</div>
-        </div>
-
-        <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;">
-          <tr>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;background:#FAFAFA;font-weight:600;width:18%;">IITS Username</td>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;">${user.iits_username || '—'}</td>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;background:#FAFAFA;font-weight:600;width:18%;">ADM Username</td>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;">${user.adm_username || '—'}</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;background:#FAFAFA;font-weight:600;">Test ENV</td>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;">${user.test_env || '—'}</td>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;background:#FAFAFA;font-weight:600;">Prod ENV</td>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;">${user.prod_env || '—'}</td>
-          </tr>
-        </table>
-
-        <div style="margin-top:12px;">
-          <div style="font-size:12px;font-weight:700;color:#363A3B;text-transform:uppercase;letter-spacing:.08em;">Completed steps</div>
-          ${doneHtml}
-        </div>
-      </div>`;
-  }).join('');
-
-  const html = `
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>RTA Wizard Progress Export</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 24px; color: #363A3B; background: #FFFFFF; }
-          h1 { margin: 0; font-size: 28px; }
-          .sub { margin-top: 6px; color: #656565; font-size: 13px; }
-          .meta { margin: 14px 0 22px; font-size: 12px; color: #656565; }
-          @media print { body { margin: 16px; } }
-        </style>
-      </head>
-      <body>
-        <h1>RTA Wizard Progress</h1>
-        <div class="sub">Export for sharing with RTA</div>
-        <div class="meta">Generated: ${new Date().toLocaleString()} · Users with progress: ${safeUsers.length}</div>
-        ${rows || '<div>No users with progress available for export.</div>'}
-      </body>
-    </html>
-  `;
-  const win = window.open('', '_blank', 'width=1100,height=900');
-  if (!win) return;
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(() => { try { win.print(); } catch (e) {} }, 250);
-}
-
 function App() {
   const [view, setView] = useState('otp');
-  const [directoryUsers, setDirectoryUsers] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [login, setLogin] = useState({ tokenChars: ['', '', ''], error: '' });
-  const [wizardUser, setWizardUser] = useState(emptyWizardUser());
+  const [wizardUser, setWizardUser] = useState({ token: '', display_name: '', iits_username: '', adm_username: '', completed: [], adminCompleted: [], iits_pw_date: null, adm_pw_date: null, vpn_date: null });
   const [wizardStatus, setWizardStatus] = useState({ saving: false, message: '' });
   const [openStep, setOpenStep] = useState(null);
   const [faqOpen, setFaqOpen] = useState({});
-  const [otp, setOtp] = useState({ panel: 'claim', message: '', position: 1, waitEstimate: 0, queueDepth: 0, otpValue: '———', activeRemaining: CONFIG.CLAIM_EXPIRY_SEC, otpRemaining: CONFIG.OTP_DISPLAY_SEC, token: '' });
+  const [otp, setOtp] = useState({ tokenChars: ['', '', ''], panel: 'claim', message: '', position: 1, waitEstimate: 0, queueDepth: 0, otpValue: '———', activeRemaining: CONFIG.CLAIM_EXPIRY_SEC, otpRemaining: CONFIG.OTP_DISPLAY_SEC });
   const [admin, setAdmin] = useState({ session: sessionStorage.getItem('adminSession') || '', configured: false, mode: 'login', error: '', credential: '', current: '', confirm: '', data: null, loading: false, configTokens: 'JA, AM, CS' });
 
   useEffect(() => {
     API.adminAuthStatus().then(d => setAdmin(s => ({ ...s, configured: !!d.configured, mode: d.configured ? 'login' : 'setup' }))).catch(() => {});
-    API.adminUsers().then(d => {
-      const list = d.users || [];
-      setDirectoryUsers(list);
-      const remembered = normalizeToken(sessionStorage.getItem('portalUserToken') || '');
-      if (remembered) {
-        const found = list.find(u => normalizeToken(u.token) === remembered);
-        if (found) setCurrentUser({ token: normalizeToken(found.token), name: found.name || '', email: found.email || '' });
-      }
-    }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!currentUser?.token) {
-      setWizardUser(emptyWizardUser());
-      return;
-    }
-    const token = normalizeToken(currentUser.token);
+    const token = wizardUser.token?.trim().toUpperCase();
+    if (!token) return;
     let cancelled = false;
     API.getWizard(token).then(data => {
-      if (cancelled) return;
-      setWizardUser({
-        ...emptyWizardUser(token, currentUser.name || ''),
-        ...data,
-        token,
-        display_name: (data && data.display_name) || currentUser.name || '',
-      });
-    }).catch(() => {
-      if (cancelled) return;
-      setWizardUser(emptyWizardUser(token, currentUser.name || ''));
-    });
+      if (cancelled || !data) return;
+      setWizardUser(s => ({ ...s, ...data, token }));
+    }).catch(() => {});
     return () => { cancelled = true; };
-  }, [currentUser?.token, currentUser?.name]);
+  }, [wizardUser.token]);
 
   useEffect(() => {
     if (!otp.panel || otp.panel === 'claim' || !otp.token) return;
@@ -586,7 +334,7 @@ function App() {
   }
 
   async function claimOtp() {
-    const token = normalizeToken(currentUser?.token);
+    const token = otp.tokenChars.join('').trim().toUpperCase();
     if (token.length < 2) return;
     try {
       const data = await API.claimOtp(token);
@@ -610,12 +358,13 @@ function App() {
   }
 
   function resetClaim() {
-    setOtp({ panel: 'claim', message: '', position: 1, waitEstimate: 0, queueDepth: 0, otpValue: '———', activeRemaining: CONFIG.CLAIM_EXPIRY_SEC, otpRemaining: CONFIG.OTP_DISPLAY_SEC, token: normalizeToken(currentUser?.token) });
+    setOtp({ tokenChars: ['', '', ''], panel: 'claim', message: '', position: 1, waitEstimate: 0, queueDepth: 0, otpValue: '———', activeRemaining: CONFIG.CLAIM_EXPIRY_SEC, otpRemaining: CONFIG.OTP_DISPLAY_SEC, token: '' });
   }
 
   async function retryOtp() {
     try { if (otp.token) await API.deleteClaim(otp.token); } catch {}
     const token = otp.token;
+    setOtp(s => ({ ...s, tokenChars: token ? token.split('').concat(['']).slice(0,3) : ['', '', ''] }));
     if (token) {
       try {
         const data = await API.claimOtp(token);
@@ -658,8 +407,7 @@ function App() {
         API.adminLog(session).catch(() => ({ total: 0, entries: [] })),
         API.adminConfig(session).catch(() => ({ admin_tokens: ['JA','AM','CS'] })),
       ]);
-      const mergedUsers = mergeAdminUsers(wizard.users || [], users.users || []);
-      setAdmin(s => ({ ...s, data: { users: mergedUsers, queue: queue.queue || [], log: log.entries || [], logTotal: log.total || 0, userCount: users.count || 0 }, configTokens: (config.admin_tokens || []).join(', '), loading: false }));
+      setAdmin(s => ({ ...s, data: { users: wizard.users || [], queue: queue.queue || [], log: log.entries || [], logTotal: log.total || 0, userCount: users.count || 0 }, configTokens: (config.admin_tokens || []).join(', '), loading: false }));
     } catch (e) {
       setAdmin(s => ({ ...s, error: e.message, loading: false }));
     }
@@ -686,33 +434,6 @@ function App() {
     setAdmin(s => ({ ...s, session: '', data: null }));
   }
 
-
-  function submitLogin() {
-    const token = normalizeToken(login.tokenChars.join(''));
-    const found = directoryUsers.find(u => normalizeToken(u.token) === token);
-    if (!token || token.length < 2) {
-      setLogin(s => ({ ...s, error: 'Enter a valid 2–3 character token.' }));
-      return;
-    }
-    if (!found) {
-      setLogin(s => ({ ...s, error: 'Token not recognised. Check with IT.' }));
-      return;
-    }
-    sessionStorage.setItem('portalUserToken', token);
-    setCurrentUser({ token, name: found.name || '', email: found.email || '' });
-    setOtp(s => ({ ...s, token }));
-  }
-
-  function logoutUser() {
-    sessionStorage.removeItem('portalUserToken');
-    setCurrentUser(null);
-    setWizardUser(emptyWizardUser());
-    setOpenStep(null);
-    setView('otp');
-    setOtp({ panel: 'claim', message: '', position: 1, waitEstimate: 0, queueDepth: 0, otpValue: '———', activeRemaining: CONFIG.CLAIM_EXPIRY_SEC, otpRemaining: CONFIG.OTP_DISPLAY_SEC, token: '' });
-    setLogin({ tokenChars: ['', '', ''], error: '' });
-  }
-
   const sharedSidebar = (
     <div className="side-stack">
       <div className="card side-card">
@@ -726,6 +447,7 @@ function App() {
       <div className="card side-card">
         <div className="side-card-title">Quick links</div>
         <div className="quick-links">
+          <a className="quick-link" href="https://srvotp26.init-db.lan"><span>OTP Relay</span><small>LAN</small></a>
           <a className="quick-link" href="https://direct.rta.ae"><span>RTA Automation Portal</span><small>Portal</small></a>
           <a className="quick-link" href="https://srvterminal.init-db.lan"><span>Terminal Server</span><small>UAE-only workaround</small></a>
           <a className="quick-link" href="https://ettisal.rta.ae/vendors"><span>Ivanti VPN</span><small>ettisal.rta.ae</small></a>
@@ -734,28 +456,22 @@ function App() {
     </div>
   );
 
-  if (!currentUser) {
-    return <LoginGate login={login} setLogin={setLogin} submitLogin={submitLogin} />;
-  }
-
   return (
     <>
       <header className="topbar">
         <div className="topbar-left"><Logo /><span className="topbar-title">OTP Portal</span></div>
         <div className="topbar-right">
-          <span className="nav-pill active">{currentUser.token}</span>
           {['otp', 'wizard', 'help', 'admin'].map(v => (
             <span key={v} className={`nav-pill ${view === v ? 'active' : ''}`} onClick={() => {
               setView(v);
               if (v === 'admin' && admin.session && !admin.data) loadAdminData();
             }}>{v === 'otp' ? 'OTP' : v === 'wizard' ? 'RTA Wizard' : v === 'help' ? 'Help' : 'Admin'}</span>
           ))}
-          <button className="btn btn-secondary" onClick={logoutUser}>Logout</button>
-          {admin.session && view === 'admin' && <button className="btn btn-secondary" onClick={logoutAdmin}>Admin logout</button>}
+          {admin.session && view === 'admin' && <button className="btn btn-secondary" onClick={logoutAdmin}>Logout</button>}
         </div>
       </header>
       <main className="app-shell">
-        {view === 'otp' && <OtpView otp={otp} claimOtp={claimOtp} retryOtp={retryOtp} resetClaim={resetClaim} sidebar={sharedSidebar} currentUser={currentUser} />}
+        {view === 'otp' && <OtpView otp={otp} setOtp={setOtp} claimOtp={claimOtp} retryOtp={retryOtp} resetClaim={resetClaim} sidebar={sharedSidebar} />}
         {view === 'wizard' && <WizardView user={wizardUser} saveWizard={saveWizard} wizardStatus={wizardStatus} openStep={openStep} setOpenStep={setOpenStep} doneCount={doneCount} progressPct={progressPct} nextStep={nextStep} toggleStep={toggleStep} />}
         {view === 'help' && <HelpView faqOpen={faqOpen} setFaqOpen={setFaqOpen} />}
         {view === 'admin' && <AdminView admin={admin} setAdmin={setAdmin} doAdminAuth={doAdminAuth} loadAdminData={loadAdminData} toggleAdminStep={toggleAdminStep} pendingAdminTasks={pendingAdminTasks} saveConfig={saveConfig} />}
@@ -764,85 +480,20 @@ function App() {
   );
 }
 
-function LoginGate({ login, setLogin, submitLogin }) {
-  const inputRefs = React.useRef([]);
-  const token = login.tokenChars.join('');
-  const disabled = token.trim().length < 2;
-
-  function onChar(i, value) {
-    const v = (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(-1);
-    const next = [...login.tokenChars];
-    next[i] = v;
-    setLogin(s => ({ ...s, tokenChars: next, error: '' }));
-    if (v && i < 2) requestAnimationFrame(() => inputRefs.current[i + 1]?.focus());
-  }
-
-  function onKeyDown(i, e) {
-    if (e.key === 'Backspace' && !login.tokenChars[i] && i > 0) {
-      requestAnimationFrame(() => inputRefs.current[i - 1]?.focus());
-      return;
-    }
-    if (e.key === 'ArrowLeft' && i > 0) {
-      e.preventDefault();
-      inputRefs.current[i - 1]?.focus();
-      return;
-    }
-    if (e.key === 'ArrowRight' && i < 2) {
-      e.preventDefault();
-      inputRefs.current[i + 1]?.focus();
-      return;
-    }
-    if (e.key === 'Enter' && !disabled) {
-      e.preventDefault();
-      submitLogin();
-    }
-  }
-
-  function onPaste(e) {
-    e.preventDefault();
-    const paste = (e.clipboardData.getData('text') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
-    const next = ['', '', ''];
-    for (let i = 0; i < paste.length; i++) next[i] = paste[i];
-    setLogin(s => ({ ...s, tokenChars: next, error: '' }));
-    requestAnimationFrame(() => inputRefs.current[Math.min(paste.length, 2)]?.focus());
-  }
-
-  return (
-    <div className="auth-wrap">
-      <div className="card main-panel">
-        <div className="eyebrow">// User login</div>
-        <h1 className="h1">Enter your token</h1>
-        <div className="sub">Use your 2–3 character INIT token to enter the portal. The token is validated against the loaded users list.</div>
-        <div className="token-wrap">
-          {[0,1,2].map(i => (
-            <input
-              key={i}
-              ref={el => (inputRefs.current[i] = el)}
-              className="token-char mono"
-              value={login.tokenChars[i]}
-              onChange={e => onChar(i, e.target.value)}
-              onKeyDown={e => onKeyDown(i, e)}
-              onPaste={onPaste}
-              placeholder="_"
-              maxLength={1}
-              autoComplete="off"
-              spellCheck="false"
-            />
-          ))}
-        </div>
-        <div className="token-hint">2 or 3 characters · letters and digits only</div>
-        {login.error && <div className="error-box" style={{ marginBottom: 12 }}>{login.error}</div>}
-        <button className="btn btn-primary" disabled={disabled} onClick={submitLogin}>Go</button>
-      </div>
-    </div>
-  );
-}
-
-function OtpView({ otp, claimOtp, retryOtp, resetClaim, sidebar, currentUser }) {
+function OtpView({ otp, setOtp, claimOtp, retryOtp, resetClaim, sidebar }) {
+  const token = otp.tokenChars.join('');
+  const claimDisabled = token.trim().length < 2;
   const ringValue = otp.panel === 'otp' ? otp.otpRemaining : otp.activeRemaining;
   const ringTotal = otp.panel === 'otp' ? CONFIG.OTP_DISPLAY_SEC : CONFIG.CLAIM_EXPIRY_SEC;
   const offset = CONFIG.RING_CIRCUMFERENCE * (1 - ringValue / ringTotal);
   const fmt = secs => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2,'0')}`;
+
+  function onChar(i, value) {
+    const v = (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(-1);
+    const next = [...otp.tokenChars];
+    next[i] = v;
+    setOtp(s => ({ ...s, tokenChars: next }));
+  }
 
   return (
     <div className="user-grid">
@@ -851,9 +502,12 @@ function OtpView({ otp, claimOtp, retryOtp, resetClaim, sidebar, currentUser }) 
           <div className="card claim-card">
             <div className="eyebrow">// Shared OTP relay</div>
             <h1 className="h1">Request your OTP</h1>
-            <div className="sub">You are signed in as <strong>{currentUser.token}</strong>{currentUser.name ? ` — ${currentUser.name}` : ''}. Click below to claim your slot.</div>
-            <div className="token-hint">Logged-in token · {currentUser.token}</div>
-            <button className="btn btn-primary" onClick={claimOtp}>Claim my slot →</button>
+            <div className="sub">Enter your personal token and claim your slot. The OTP code will appear right here — no email needed.</div>
+            <div className="token-wrap">
+              {[0,1,2].map(i => <input key={i} className="token-char mono" value={otp.tokenChars[i]} onChange={e => onChar(i, e.target.value)} placeholder="_" />)}
+            </div>
+            <div className="token-hint">2 or 3 characters · letters and digits only</div>
+            <button className="btn btn-primary" disabled={claimDisabled} onClick={claimOtp}>Claim my slot →</button>
             <div className="footer-note">Never share your OTP with anyone — not even IT. Especially not IT.</div>
           </div>
         )}
@@ -948,7 +602,7 @@ function WizardView({ user, saveWizard, wizardStatus, openStep, setOpenStep, don
           <div>
             <div className="eyebrow">// RTA onboarding dashboard</div>
             <h1 className="h1">RTA Access Wizard</h1>
-            <div className="sub">Your token record is server-backed so reminders and progress persist across devices.</div>
+            <div className="sub">Manager-style layout, but in the INIT light theme and official RS colors. Your token record is server-backed so reminders and progress persist across devices.</div>
           </div>
           <div className="hero-meta">
             <span className="pill primary">{doneCount} / {STEPS.length} done</span>
@@ -1008,6 +662,7 @@ function WizardView({ user, saveWizard, wizardStatus, openStep, setOpenStep, don
         <div className="card side-card">
           <div className="side-card-title">Your credentials</div>
           <div className="form-grid">
+            <div className="field"><label>INIT token</label><input value={user.token || ''} onChange={e => saveWizard({ token: e.target.value })} placeholder="2–3 chars" /></div>
             <div className="field"><label>Display name</label><input value={user.display_name || ''} onChange={e => saveWizard({ display_name: e.target.value })} placeholder="e.g. Sara" /></div>
             <div className="field"><label>IITS username</label><input value={user.iits_username || ''} onChange={e => saveWizard({ iits_username: e.target.value })} placeholder="IITS_…" /></div>
             <div className="field"><label>ADM username</label><input value={user.adm_username || ''} onChange={e => saveWizard({ adm_username: e.target.value })} placeholder="ADM_…" /></div>
@@ -1084,46 +739,84 @@ function CountdownEntry({ label, date, onDateChange, onReset }) {
   );
 }
 
-function HelpView({ faqOpen, setFaqOpen }) {
-  const sections = [
-    ['Using this portal', [
-      ['How do I use this portal to get my OTP?', 'Enter your token and claim the slot first. If someone is ahead of you, wait. Only when the portal says “Go trigger your OTP now” should you request the OTP from the RTA platform. The code appears on-screen in the portal.'],
-      ['I claimed a slot but the OTP never appeared', 'Your 90-second active slot may have expired, or you triggered the OTP too early. Claim → wait for green light → trigger OTP.'],
-      ['Where do I find my token?', 'Your token is assigned by IT. If you do not have one, ask Amer or Jathin to add you to the user list.']
-    ]],
-    ['Password & accounts', [
-      ['What are the RTA password requirements?', 'Use more than 10 characters and include at least one number, one uppercase letter, and one special character. Avoid names, dictionary words, and simple sequences.'],
-      ['When do passwords expire?', 'Both IITS and ADM passwords expire after 90 days. No reminder is sent, which is why the dashboard tracks the countdown.'],
-      ['What accounts will I have?', 'IITS for VPN and reset flows, ADM for PAM and privileged access. Oracle Authenticator is used as the second factor.']
-    ]],
-    ['VPN & server access', [
-      ['How do I connect to the RTA VPN?', 'Install Ivanti Secure Access Client and add the vendor URL https://ettisal.rta.ae/vendors. Use your IITS account plus Oracle Authenticator TOTP.'],
-      ['How do I use PAM?', 'Connect to the VPN, open PAM, log in with rtadom\\IITS_*USERNAME* and the TOTP, search for the account, and use PSM-RDP to connect.'],
-      ['How do I transfer files?', 'Use WinSCP to connect to the SFTP host 10.11.174.40 on port 122 via VPN, then move files from SFTP to the target server.']
-    ]],
-    ['Terminal server', [
-      ['Why do I need the terminal server?', 'Some reset links and RTA pages only work inside the UAE. If you are outside the UAE, connect to srvterminal.init-db.lan first.'],
-      ['Browser access', 'Open https://srvterminal.init-db.lan, accept the certificate warning, log in, then access the required RTA links inside the remote session.'],
-      ['Windows RDP access', 'Use Remote Desktop Connection to 172.31.10.82 or srvterminal, then log in with your domain credentials.']
-    ]],
-  ];
+function HelpView() {
+  const [manifest, setManifest] = useState(null);
+  const [docHtml, setDocHtml] = useState({});
+  const [docOpen, setDocOpen] = useState({});
+  const [helpError, setHelpError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadHelpDocs() {
+      try {
+        setHelpError('');
+        const manifestRes = await fetch('/help/manifest.json', { cache: 'no-store' });
+        if (!manifestRes.ok) throw new Error(`manifest ${manifestRes.status}`);
+        const manifestJson = await manifestRes.json();
+        if (cancelled) return;
+        setManifest(manifestJson);
+
+        const loaded = {};
+        await Promise.all(
+          (manifestJson.docs || []).map(async (doc) => {
+            const res = await fetch(doc.htmlPath, { cache: 'no-store' });
+            if (!res.ok) throw new Error(`doc ${doc.slug} ${res.status}`);
+            loaded[doc.slug] = await res.text();
+          })
+        );
+
+        if (!cancelled) setDocHtml(loaded);
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to load help docs', err);
+          setHelpError('Documentation could not be loaded right now.');
+        }
+      }
+    }
+
+    loadHelpDocs();
+    return () => { cancelled = true; };
+  }, []);
+
+  const grouped = {};
+  for (const doc of manifest?.docs || []) {
+    if (!grouped[doc.section]) grouped[doc.section] = [];
+    grouped[doc.section].push(doc);
+  }
 
   return (
     <div className="help-grid">
       <div className="card main-panel">
         <div className="eyebrow">// Documentation</div>
         <h1 className="h1">Help & Docs</h1>
-        <div className="sub">This keeps the current help content, but in a wider layout that uses the space properly.</div>
-        {sections.map(([label, items]) => (
-          <div key={label}>
-            <div className="help-section">{label}</div>
+        <div className="sub">Documentation is loaded from the repository build output and updates when the help docs are rebuilt.</div>
+
+        {helpError && <div className="error-box" style={{ marginTop: 16 }}>{helpError}</div>}
+
+        {!manifest && !helpError && (
+          <div className="card progress-card" style={{ boxShadow: 'none', marginTop: 16 }}>
+            <div className="small">Loading documentation…</div>
+          </div>
+        )}
+
+        {Object.entries(grouped).map(([section, items]) => (
+          <div key={section}>
+            <div className="help-section">{section}</div>
             <div className="faq-stack">
-              {items.map(([q, a]) => {
-                const open = !!faqOpen[q];
+              {items.map((doc) => {
+                const open = !!docOpen[doc.slug];
                 return (
-                  <div className="faq" key={q}>
-                    <div className="faq-q" onClick={() => setFaqOpen(s => ({ ...s, [q]: !s[q] }))}><span>{q}</span><span>{open ? '▴' : '▾'}</span></div>
-                    {open && <div className="faq-a">{a}</div>}
+                  <div className="faq" key={doc.slug}>
+                    <div className="faq-q" onClick={() => setDocOpen(s => ({ ...s, [doc.slug]: !s[doc.slug] }))}>
+                      <span>{doc.title}</span>
+                      <span>{open ? '▴' : '▾'}</span>
+                    </div>
+                    {open && (
+                      <div className="faq-a" style={{ display: 'block' }}>
+                        <div dangerouslySetInnerHTML={{ __html: docHtml[doc.slug] || '<p>Loading…</p>' }} />
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1144,16 +837,7 @@ function HelpView({ faqOpen, setFaqOpen }) {
   );
 }
 
-function completedStepsList(user) {
-  return STEPS.filter(step => getVisibleDone(user, step));
-}
-
 function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminStep, pendingAdminTasks, saveConfig }) {
-  const [adminTab, setAdminTab] = useState('wizard');
-  const [logStatus, setLogStatus] = useState('all');
-  const [logEvent, setLogEvent] = useState('');
-  const [logSearch, setLogSearch] = useState('');
-
   useEffect(() => {
     if (admin.session && !admin.data) loadAdminData();
   }, [admin.session]);
@@ -1161,7 +845,7 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
   if (!admin.session) {
     return (
       <div className="auth-wrap">
-        <div className="card main-panel" style={{ minWidth: 0, overflow: "hidden", width: "100%" }}>
+        <div className="card main-panel">
           <div className="eyebrow">// Admin access</div>
           <h1 className="h1">{admin.mode === 'setup' ? 'Set admin credential' : 'Admin login'}</h1>
           <div className="sub">Use a password or 4-digit PIN. This is shared for portal admins.</div>
@@ -1183,42 +867,6 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
   const users = admin.data?.users || [];
   const queue = admin.data?.queue || [];
   const log = admin.data?.log || [];
-  const eventOptions = [...new Set(log.map(entry => entry.event).filter(Boolean))].sort();
-
-  const filteredLog = log.filter(entry => {
-    if (logStatus !== 'all' && (entry.status || 'info') !== logStatus) return false;
-    if (logEvent && entry.event !== logEvent) return false;
-    if (logSearch.trim()) {
-      const q = logSearch.trim().toLowerCase();
-      const hay = `${entry.token || ''} ${entry.event || ''} ${entry.detail || ''}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-
-  function renderNextStep(user) {
-    const pending = STEPS.filter(s => s.owner === 'admin' && isUnlocked(user, s) && !getVisibleDone(user, s));
-    if (pending.length === 0) return <div className="small">No pending admin step</div>;
-    const step = pending[0];
-    return (
-      <div>
-        <div><strong>{step.title}</strong></div>
-        <div className="small">{step.adminLabel || step.summary}</div>
-      </div>
-    );
-  }
-
-  function renderCompletedSteps(user) {
-    const done = completedStepsList(user);
-    if (done.length === 0) return <div className="small">No completed steps yet</div>;
-    return (
-      <div>
-        {done.map(step => (
-          <div key={step.id} className="small" style={{ marginBottom: 4 }}>✓ {step.title}</div>
-        ))}
-      </div>
-    );
-  }
 
   return (
     <div className="admin-layout">
@@ -1229,173 +877,83 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
         <div className="card stat-card"><div className="stat-label">Audit entries</div><div className="stat-value">{admin.data?.logTotal || 0}</div></div>
       </div>
 
-      <div className="wide-layout" style={{ gridTemplateColumns: "minmax(0, 3.1fr) minmax(260px, 0.75fr)", alignItems: "start", gap: 16 }}>
+      <div className="wide-layout">
         <div className="card main-panel">
           <div className="hero-row">
             <div>
               <div className="eyebrow">// Admin dashboard</div>
-              <h1 className="h1">{adminTab === 'wizard' ? 'RTA Wizard Progress' : 'OTP Log'}</h1>
-              <div className="sub">{adminTab === 'wizard' ? 'Users, credentials, progress, and next admin-owned step in one view.' : 'Filter and search the relay log by token, category, and status.'}</div>
+              <h1 className="h1">RTA Wizard Progress</h1>
+              <div className="sub">Users, credentials, progress, and admin-owned steps in one view.</div>
             </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'nowrap' }}>
-              <div className="admin-tabbar" style={{ display: 'flex', flexDirection: 'row', gap: 8, flexWrap: 'nowrap', alignItems: 'center' }}>
-                <button className="btn" style={{ width: 'auto', whiteSpace: 'nowrap', background: adminTab === 'wizard' ? RS.primary800 : RS.neutralWhite, color: adminTab === 'wizard' ? RS.neutralWhite : RS.neutral900, border: adminTab === 'wizard' ? 'none' : `1px solid ${RS.neutral300}` }} onClick={() => setAdminTab('wizard')}>RTA Wizard</button>
-                <button className="btn" style={{ width: 'auto', whiteSpace: 'nowrap', background: adminTab === 'otp-log' ? RS.primary800 : RS.neutralWhite, color: adminTab === 'otp-log' ? RS.neutralWhite : RS.neutral900, border: adminTab === 'otp-log' ? 'none' : `1px solid ${RS.neutral300}` }} onClick={() => setAdminTab('otp-log')}>OTP Log</button>
-              </div>
-              {adminTab === 'wizard' && <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => exportWizardProgressPdf(users)}>Export PDF</button>}
-              <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => loadAdminData()}>Refresh</button>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-secondary" onClick={() => loadAdminData()}>Refresh</button>
             </div>
           </div>
-
-          {adminTab === 'wizard' && (
-            <>
-              {pendingAdminTasks.length > 0 && (
-                <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
-                  <div className="eyebrow">// Pending admin tasks</div>
-                  {pendingAdminTasks.map((t, i) => (
-                    <div key={i} className="admin-task-row">
-                      <button className="btn btn-outline" style={{ padding: '6px 10px', minWidth: 132 }} onClick={() => toggleAdminStep(t.user.token, t.step.id)}>Mark complete</button>
-                      <div className="pill warn">{t.user.token}</div>
-                      <div>
-                        <div><strong>{t.step.title}</strong></div>
-                        <div className="small">{t.step.adminLabel || t.step.summary}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div style={{ width: '100%', overflowX: 'auto', paddingBottom: 4 }}>
-                <table className="admin-table" style={{ width: 'max-content', minWidth: '100%', tableLayout: 'auto' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ minWidth: 54, whiteSpace: 'nowrap' }}>Token</th>
-                      <th style={{ minWidth: 70, whiteSpace: 'nowrap' }}>IITS</th>
-                      <th style={{ minWidth: 70, whiteSpace: 'nowrap' }}>ADM</th>
-                      <th style={{ minWidth: 128, whiteSpace: 'nowrap' }}>Test ENV</th>
-                      <th style={{ minWidth: 148, whiteSpace: 'nowrap' }}>Prod ENV</th>
-                      <th style={{ minWidth: 170, whiteSpace: 'nowrap' }}>Progress</th>
-                      <th style={{ minWidth: 104, whiteSpace: 'nowrap' }}>Activity</th>
-                      <th style={{ minWidth: 320 }}>Completed Steps</th>
-                      <th style={{ minWidth: 340 }}>Next Step</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                  {users.sort((a,b) => a.token.localeCompare(b.token)).map(u => {
-                    const pct = Math.round((allDone(u).length / STEPS.length) * 100);
-                    return (
-                      <tr key={u.token}>
-                        <td><strong>{u.token}</strong></td>
-                        <td className="mono">{u.iits_username || '—'}</td>
-                        <td className="mono">{u.adm_username || '—'}</td>
-                        <td style={{ minWidth: 140, whiteSpace: 'nowrap' }}>{u.test_env || '—'}</td>
-                        <td style={{ minWidth: 160, whiteSpace: 'nowrap' }}>{u.prod_env || '—'}</td>
-                        <td style={{ minWidth: 180 }}>
-                          <div className="progress-bar"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
-                          <div className="small" style={{ marginTop: 6 }}>{pct}%</div>
-                        </td>
-                        <td style={{ minWidth: 110, whiteSpace: 'nowrap' }}>{fmtShortDate(u.updated_at || u.lastActive)}</td>
-                        <td style={{ minWidth: 220, verticalAlign: 'top' }}>{renderCompletedSteps(u)}</td>
-                        <td style={{ minWidth: 220, verticalAlign: 'top' }}>{renderNextStep(u)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {adminTab === 'otp-log' && (
-            <>
-              <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14, padding: '14px 16px' }}>
-                <div className="hero-row" style={{ marginBottom: 10, paddingBottom: 10 }}>
+          {pendingAdminTasks.length > 0 && (
+            <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
+              <div className="eyebrow">// Pending admin tasks</div>
+              {pendingAdminTasks.map((t, i) => (
+                <div key={i} className="admin-task-row">
+                  <button className="step-check" onClick={() => toggleAdminStep(t.user.token, t.step.id)}>☐</button>
+                  <div className="pill warn">{t.user.token}</div>
                   <div>
-                    <div className="side-card-title" style={{ marginBottom: 0 }}>Audit Log <span className="small" style={{ fontWeight: 400 }}>(newest first)</span></div>
+                    <div><strong>{t.step.title}</strong></div>
+                    <div className="small">{t.step.adminLabel || t.step.summary}</div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="small mono" style={{ textTransform: 'uppercase', letterSpacing: '.08em' }}>Status</span>
-                    {['all', 'info', 'warn', 'error'].map(status => (
-                      <button
-                        key={status}
-                        style={filterChipStyle(status, logStatus === status)}
-                        onClick={() => setLogStatus(status)}
-                      >
-                        {status.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="small mono" style={{ textTransform: 'uppercase', letterSpacing: '.08em' }}>Event</span>
-                    <select value={logEvent} onChange={e => setLogEvent(e.target.value)} style={{ minWidth: 165, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
-                      <option value="">All events</option>
-                      {eventOptions.map(ev => <option key={ev} value={ev}>{ev}</option>)}
-                    </select>
-                  </div>
-                  <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
-                  <input value={logSearch} onChange={e => setLogSearch(e.target.value)} placeholder="token or detail..." style={{ flex: '0 1 180px', minWidth: 180, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }} />
-                </div>
-              </div>
-
-              <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
-                <div className="eyebrow">// Live queue</div>
-                {queue.length === 0 ? <div className="small">Nobody is in the queue right now.</div> : queue.map((q, i) => <div className="queue-row" key={i}><div className="dot active">{q.position || i+1}</div><div><strong>{q.token}</strong><div className="small">{q.name || q.email || ''}</div></div></div>)}
-              </div>
-
-              <table className="admin-table">
-                <thead>
-                  <tr><th>Time</th><th>Event</th><th>Token</th><th>Detail</th><th>Status</th></tr>
-                </thead>
-                <tbody>
-                  {filteredLog.length === 0 ? (
-                    <tr><td colSpan="5" className="small" style={{ padding: '16px' }}>No matching audit entries.</td></tr>
-                  ) : (
-                    filteredLog.map((entry, i) => (
-                      <tr key={i}>
-                        <td className="mono">{fmtDubaiDateTime(entry.ts)}</td>
-                        <td><strong>{entry.event}</strong></td>
-                        <td className="mono">{entry.token || '—'}</td>
-                        <td>{entry.detail || '—'}</td>
-                        <td><span style={statusPillStyle(entry.status || 'info')}>{entry.status || 'info'}</span></td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </>
+              ))}
+            </div>
           )}
+
+          <table className="admin-table">
+            <thead>
+              <tr><th>Token</th><th>IITS</th><th>ADM</th><th>Progress</th><th>Active</th><th>Admin steps</th></tr>
+            </thead>
+            <tbody>
+              {users.sort((a,b) => a.token.localeCompare(b.token)).map(u => {
+                const pct = Math.round((allDone(u).length / STEPS.length) * 100);
+                const pending = STEPS.filter(s => s.owner === 'admin' && isUnlocked(u, s) && !getVisibleDone(u, s));
+                return (
+                  <tr key={u.token}>
+                    <td><strong>{u.token}</strong></td>
+                    <td className="mono">{u.iits_username || '—'}</td>
+                    <td className="mono">{u.adm_username || '—'}</td>
+                    <td style={{ minWidth: 180 }}>
+                      <div className="progress-bar"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
+                      <div className="small" style={{ marginTop: 6 }}>{pct}%</div>
+                    </td>
+                    <td>{fmtShortDate(u.updated_at || u.lastActive)}</td>
+                    <td>
+                      {STEPS.filter(s => s.owner === 'admin').map(s => {
+                        const done = getVisibleDone(u, s);
+                        return <button key={s.id} className={`btn ${done ? 'btn-secondary' : 'btn-outline'}`} style={{ marginRight: 6, marginBottom: 6, padding: '6px 10px' }} onClick={() => toggleAdminStep(u.token, s.id)}>{done ? '✓' : '☐'} {s.title}</button>;
+                      })}
+                      {pending.length === 0 && <div className="small">No pending admin steps</div>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
 
-        <div className="side-panel" style={{ minWidth: 260, maxWidth: 340 }}>
+        <div className="side-panel">
           <div className="card side-card">
             <div className="side-card-title">Admin token config</div>
             <div className="field"><label>Admin tokens</label><input value={admin.configTokens} onChange={e => setAdmin(s => ({ ...s, configTokens: e.target.value }))} /></div>
             <div className="small" style={{ marginTop: 10 }}>Seeded for Jathin, Amer, and Christian, but editable from the portal.</div>
             <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={saveConfig}>Save config</button>
           </div>
-
-          {adminTab === 'wizard' && (
-            <div className="card side-card">
-              <div className="side-card-title">Wizard overview</div>
-              <div className="notes-list">
-                <div className="small">This tab is for onboarding status, usernames, reminder dates, and the next admin-owned step for each user.</div>
-                <div className="small">Use the pending tasks panel to mark admin actions complete.</div>
-              </div>
+          <div className="card side-card">
+            <div className="side-card-title">Live queue</div>
+            {queue.length === 0 ? <div className="small">Nobody is in the queue right now.</div> : queue.map((q, i) => <div className="queue-row" key={i}><div className="dot active">{q.position || i+1}</div><div><strong>{q.token}</strong><div className="small">{q.name || q.email || ''}</div></div></div>)}
+          </div>
+          <div className="card side-card">
+            <div className="side-card-title">Recent audit log</div>
+            <div style={{ maxHeight: 360, overflow: 'auto' }}>
+              {log.slice(0, 15).map((entry, i) => <div key={i} className="small" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}><strong>{entry.event}</strong> · {entry.token || '—'}<br />{entry.detail || ''}</div>)}
             </div>
-          )}
-
-          {adminTab === 'otp-log' && (
-            <div className="card side-card">
-              <div className="side-card-title">OTP log overview</div>
-              <div className="notes-list">
-                <div className="small">Filter by event category and status, or search using a user token such as SCH.</div>
-                <div className="small">Use this tab for operational relay troubleshooting and queue visibility.</div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
