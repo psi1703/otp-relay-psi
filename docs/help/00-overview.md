@@ -36,4 +36,4 @@ This section provides a single entry point for all RTA access topics.
 
 ## Maintainers
 
-Keep this page brief. Put detailed steps in the topic pages and keep screenshots in `docs/help/assets/`.
+Keep this page brief. Put detailed steps in the topic pages and keep screenshots in `docs/help/assets/`. This is a test
