@@ -5,7 +5,7 @@ order: 0
 slug: overview
 ---
 
-# RTA Servers Access Guides
+# RTA Servers Access Guide
 
 This section provides a single entry point for all RTA access topics.
 
@@ -23,7 +23,7 @@ This section provides a single entry point for all RTA access topics.
 - Terminal Server access guide
 - Important notes and tips
 
-## Recommended reading order for new user
+## Recommended reading order for new users
 
 1. New user onboarding
 2. Reset RTA password
