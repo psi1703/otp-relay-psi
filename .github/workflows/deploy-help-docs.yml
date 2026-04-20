@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Use system Python
         run: python3 --version
@@ -32,3 +32,7 @@ jobs:
         run: |
           ls -R frontend/help
           cat frontend/help/manifest.json
+
+      - name: Sync built help docs to live portal
+        run: |
+          rsync -av --delete frontend/help/ /opt/otp-relay/frontend/help/
