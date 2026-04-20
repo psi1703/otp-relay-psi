@@ -5,7 +5,7 @@ order: 0
 slug: overview
 ---
 
-# RTA Servers Access Guide
+# RTA Servers Access Guides
 
 This section provides a single entry point for all RTA access topics.
 
@@ -23,7 +23,7 @@ This section provides a single entry point for all RTA access topics.
 - Terminal Server access guide
 - Important notes and tips
 
-## Recommended reading order for new users
+## Recommended reading order for new user
 
 1. New user onboarding
 2. Reset RTA password
@@ -33,7 +33,6 @@ This section provides a single entry point for all RTA access topics.
 6. Install WinSCP
 7. Use PAM
 8. Notes and tips
-9. This is a test.
 
 ## Maintainers
 
