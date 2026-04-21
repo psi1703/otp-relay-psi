@@ -30,3 +30,19 @@ Internal IP: `172.31.10.82`
 4. Ensure the session is set to **Xorg**.
 5. Enter your domain username and password.
 6. Click **OK**.
+
+## Browser access screenshots
+
+![Guacamole login page in the browser](assets/terminal-browser-login.png)
+
+![Browser-based RDP login page after the first terminal server login](assets/terminal-browser-rdp-login.png)
+
+![Ubuntu desktop opened directly in the browser](assets/terminal-browser-desktop.png)
+
+## Standard Windows RDP screenshots
+
+![Remote Desktop Connection client with the terminal server target](assets/terminal-rdp-client.png)
+
+![Xorg login prompt for the terminal server session](assets/terminal-xorg-login.png)
+
+![Ubuntu desktop after connecting through Windows RDP](assets/terminal-rdp-desktop.png)

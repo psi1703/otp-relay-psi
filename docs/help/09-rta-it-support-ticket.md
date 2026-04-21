@@ -20,3 +20,7 @@ slug: rta-it-support-ticket
 3. Fill in the issue details.
 4. Attach screenshots if needed.
 5. Click **Submit**.
+
+## Screenshot
+
+![IT Help Desk section in the RTA Automation Portal](assets/it-help-desk-navigation.png)

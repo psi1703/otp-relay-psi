@@ -17,3 +17,7 @@ slug: install-winscp
    - Port: `122`
    - Username: `rtadom\IITS_*USERNAME*`
    - Password: your RTA account password
+
+## Screenshot
+
+![WinSCP login window with the required connection details](assets/winscp-login.png)

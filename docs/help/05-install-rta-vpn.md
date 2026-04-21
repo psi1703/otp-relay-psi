@@ -24,3 +24,7 @@ slug: install-rta-vpn
 The RTA VPN uses multi-factor authentication:
 - First factor: your RTA account `IITS_*USERNAME*` and password
 - Second factor: the 6-digit TOTP configured in Oracle Authenticator
+
+## Screenshot
+
+![Ivanti Secure Access Client add connection window](assets/ivanti-add-connection.png)

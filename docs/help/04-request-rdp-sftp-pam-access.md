@@ -38,3 +38,23 @@ slug: request-rdp-sftp-pam-access
 ## Attachments
 
 - Attach a copy of your INIT ID card.
+
+## Screenshots
+
+### Search and open the request
+
+![Search for VPN in the RTA Automation Portal](assets/vpn-search-request.png)
+
+![Apply button under VPN Access Request](assets/vpn-apply-request.png)
+
+### Start a new VPN access request
+
+![Select New VPN Access](assets/vpn-new-vpn-access.png)
+
+![VPN request form details](assets/vpn-request-form-details.png)
+
+### Add PAM and SSH services
+
+![Add PAM application or service](assets/vpn-add-pam-service.png)
+
+![Add SSH or SFTP application or service](assets/vpn-add-ssh-service.png)

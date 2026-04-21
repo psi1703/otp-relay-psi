@@ -17,3 +17,9 @@ slug: use-pam
 4. Search for your RTA account.
 5. Open the **Connect** dropdown and choose **PSM-RDP**.
 6. Enter a reason and select the required server IP address.
+
+## Screenshots
+
+![Search for your RTA account in PAM](assets/pam-account-search.png)
+
+![Choose PSM-RDP from the connect dropdown](assets/pam-connect-psm-rdp.png)

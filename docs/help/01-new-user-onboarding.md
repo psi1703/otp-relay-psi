@@ -30,3 +30,7 @@ slug: new-user-onboarding
 
 - Optional: add a workflow / sequence image from the original guide.
 - Store screenshots in `docs/help/assets/`.
+
+## Process overview image
+
+![New user onboarding sequence](assets/new-user-onboarding-sequence.png)
