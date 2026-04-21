@@ -384,7 +384,6 @@ function statusPillStyle(status) {
 
 function exportWizardProgressPdf(users) {
   const safeUsers = [...(users || [])]
-    .filter(user => allDone(user).length > 0)
     .sort((a, b) => (a.token || '').localeCompare(b.token || ''));
   const rows = safeUsers.map(user => {
     const doneSteps = STEPS.filter(step => getVisibleDone(user, step));
@@ -1313,23 +1312,23 @@ function HelpView() {
       </div>
       <div className="side-panel">
         <div className="side-card-title" style={{ marginBottom: 12 }}>Contacts</div>
-        <div className="card side-card contact-card">
+        <div className="card side-card contact-card" style={{ padding: '14px 16px', minHeight: 'unset', flex: '0 0 auto' }}>
           <strong>Jathin</strong>
           <div className="small">
             RTA account creation, IAM username, ADM notification
           </div>
         </div>
-        <div className="card side-card contact-card">
+        <div className="card side-card contact-card" style={{ padding: '14px 16px', minHeight: 'unset', flex: '0 0 auto' }}>
           <strong>Amer Darwich</strong>
           <div className="small">
             ADM account, PAM onboard list, OTP token assignment
           </div>
         </div>
-        <div className="card side-card contact-card">
+        <div className="card side-card contact-card" style={{ padding: '14px 16px', minHeight: 'unset', flex: '0 0 auto' }}>
           <strong>Christian Schilling</strong>
           <div className="small">Admin oversight and escalation</div>
         </div>
-        <div className="card side-card contact-card">
+        <div className="card side-card contact-card" style={{ padding: '14px 16px', minHeight: 'unset', flex: '0 0 auto' }}>
           <strong>RTA IT Support</strong>
           <div className="small">
             VPN access grant and access issues via the RTA Automation Portal →
@@ -1475,6 +1474,8 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                 <button className="btn" style={{ width: 'auto', whiteSpace: 'nowrap', background: adminTab === 'wizard' ? RS.primary800 : RS.neutralWhite, color: adminTab === 'wizard' ? RS.neutralWhite : RS.neutral900, border: adminTab === 'wizard' ? 'none' : `1px solid ${RS.neutral300}` }} onClick={() => setAdminTab('wizard')}>RTA Wizard</button>
                 <button className="btn" style={{ width: 'auto', whiteSpace: 'nowrap', background: adminTab === 'otp-log' ? RS.primary800 : RS.neutralWhite, color: adminTab === 'otp-log' ? RS.neutralWhite : RS.neutral900, border: adminTab === 'otp-log' ? 'none' : `1px solid ${RS.neutral300}` }} onClick={() => setAdminTab('otp-log')}>OTP Log</button>
               </div>
+              {adminTab === 'wizard' && <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => exportWizardProgressPdf(admin.data?.users || [])}>Export PDF</button>}
+              <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => loadAdminData()}>Refresh</button>
               <button
                 className="btn btn-secondary"
                 style={{ width: 'auto', padding: '0 12px', fontSize: 18, lineHeight: 1 }}
@@ -1484,8 +1485,6 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
               >
                 ⚙
               </button>
-              {adminTab === 'wizard' && <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => exportWizardProgressPdf(filteredUsers)}>Export PDF</button>}
-              <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => loadAdminData()}>Refresh</button>
             </div>
           </div>
 
@@ -1522,22 +1521,6 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                   </select>
                 </div>
               </div>
-
-              {pendingAdminTasks.length > 0 && (
-                <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
-                  <div className="eyebrow">// Pending admin tasks</div>
-                  {pendingAdminTasks.map((t, i) => (
-                    <div key={i} className="admin-task-row">
-                      <button className="btn btn-outline" style={{ padding: '6px 10px', minWidth: 132 }} onClick={() => toggleAdminStep(t.user.token, t.step.id)}>Mark complete</button>
-                      <div className="pill warn">{t.user.token}</div>
-                      <div>
-                        <div><strong>{t.step.title}</strong></div>
-                        <div className="small">{t.step.adminLabel || t.step.summary}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
 
               <div style={{ width: '100%', overflowX: 'auto', paddingBottom: 4 }}>
                 <table className="admin-table" style={{ width: 'max-content', minWidth: '100%', tableLayout: 'auto' }}>
@@ -1655,16 +1638,8 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
             </div>
           )}
 
-          {adminTab === 'wizard' && (
-            <div className="card side-card">
-              <div className="side-card-title">Wizard overview</div>
-              <div className="notes-list">
-                <div className="small">This tab is for onboarding status, usernames, reminder dates, and the next admin-owned step for each user.</div>
-                <div className="small">Use the pending tasks panel to mark admin actions complete.</div>
-              </div>
-            </div>
-          )}
-        </div>
+
+        </div>>
       </div>
     </div>
   );
