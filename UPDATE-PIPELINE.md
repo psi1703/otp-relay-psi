@@ -17,8 +17,6 @@ This document explains:
 
 ---
 
-
-
 ---
 
 # 1. Architecture
