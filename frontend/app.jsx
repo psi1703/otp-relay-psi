@@ -1368,7 +1368,7 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
           <div className="sub">Use a password or 4-digit PIN. This is shared for portal admins.</div>
           <div className="form-grid" style={{ marginTop: 18 }}>
             {admin.mode === 'setup' && admin.configured && <div className="field"><label>Current credential</label><input type="password" value={admin.current} onChange={e => setAdmin(s => ({ ...s, current: e.target.value }))} /></div>}
-            <div className="field"><label>{admin.mode === 'setup' ? 'New credential' : 'Credential'}</label><input type="password" value={admin.credential} onChange={e => setAdmin(s => ({ ...s, credential: e.target.value }))} /></div>}
+            <div className="field"><label>{admin.mode === 'setup' ? 'New credential' : 'Credential'}</label><input type="password" value={admin.credential} onChange={e => setAdmin(s => ({ ...s, credential: e.target.value }))} /></div>
             {admin.mode === 'setup' && <div className="field"><label>Confirm credential</label><input type="password" value={admin.confirm} onChange={e => setAdmin(s => ({ ...s, confirm: e.target.value }))} /></div>}
             {admin.error && <div className="error-box">{admin.error}</div>}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -1399,10 +1399,9 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
 
   const now = Date.now();
   const filteredUsers = users.filter(user => {
-    const q = wizardTokenSearch.trim().toLowerCase();
+    const q = wizardTokenSearch.trim().toUpperCase();
     if (q) {
-      const hay = `${user.token || ''} ${user.iits_username || ''} ${user.adm_username || ''} ${user.name || ''} ${user.email || ''} ${user.test_env || ''} ${user.prod_env || ''}`.toLowerCase();
-      if (!hay.includes(q)) return false;
+      if ((user.token || '').toUpperCase() !== q) return false;
     }
 
     if (wizardEnvFilter === 'test' && !user.test_env) return false;
@@ -1497,28 +1496,31 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <input value={wizardTokenSearch} onChange={e => setWizardTokenSearch(e.target.value)} placeholder="token, username, or env..." style={{ flex: '0 1 190px', minWidth: 190, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="small mono" style={{ textTransform: 'uppercase', letterSpacing: '.08em' }}>Env</span>
+                    {[['all', 'All'], ['test', 'Test'], ['prod', 'Prod'], ['any', 'Any']].map(([val, label]) => (
+                      <button key={val} style={filterChipStyle(val === 'all' ? 'all' : 'info', wizardEnvFilter === val)} onClick={() => setWizardEnvFilter(val)}>{label}</button>
+                    ))}
+                  </div>
                   <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
-                  <select value={wizardEnvFilter} onChange={e => setWizardEnvFilter(e.target.value)} style={{ minWidth: 150, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
-                    <option value="all">All env</option>
-                    <option value="test">Test env only</option>
-                    <option value="prod">Prod env only</option>
-                    <option value="any">Any env assigned</option>
-                  </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="small mono" style={{ textTransform: 'uppercase', letterSpacing: '.08em' }}>Progress</span>
+                    {[['all', 'All'], ['not-started', 'Not started'], ['in-progress', 'In progress'], ['completed', 'Completed']].map(([val, label]) => (
+                      <button key={val} style={filterChipStyle(val === 'all' ? 'all' : 'info', wizardProgressFilter === val)} onClick={() => setWizardProgressFilter(val)}>{label}</button>
+                    ))}
+                  </div>
                   <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
-                  <select value={wizardProgressFilter} onChange={e => setWizardProgressFilter(e.target.value)} style={{ minWidth: 150, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
-                    <option value="all">All progress</option>
-                    <option value="not-started">Not started</option>
-                    <option value="in-progress">In progress</option>
-                    <option value="completed">Completed</option>
-                  </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="small mono" style={{ textTransform: 'uppercase', letterSpacing: '.08em' }}>Activity</span>
+                    <select value={wizardWindowFilter} onChange={e => setWizardWindowFilter(e.target.value)} style={{ minWidth: 145, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+                      <option value="all">All activity</option>
+                      <option value="7d">Last 7 days</option>
+                      <option value="30d">Last 30 days</option>
+                      <option value="90d">Last 90 days</option>
+                    </select>
+                  </div>
                   <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
-                  <select value={wizardWindowFilter} onChange={e => setWizardWindowFilter(e.target.value)} style={{ minWidth: 145, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
-                    <option value="all">All activity</option>
-                    <option value="7d">Last 7 days</option>
-                    <option value="30d">Last 30 days</option>
-                    <option value="90d">Last 90 days</option>
-                  </select>
+                  <input value={wizardTokenSearch} onChange={e => setWizardTokenSearch(e.target.value)} placeholder="token..." style={{ flex: '0 1 140px', minWidth: 140, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }} />
                 </div>
               </div>
 
