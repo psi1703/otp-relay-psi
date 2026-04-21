@@ -56,12 +56,7 @@ def restart_service(service_name: str) -> None:
         ["sudo", "systemctl", "restart", service_name],
         check=True,
     )
-    subprocess.run(
-        ["sudo", "systemctl", "is-active", "--quiet", service_name],
-        check=True,
-    )
-
-
+   
 def main() -> None:
     changed_services: set[str] = set()
     changed_files: list[str] = []
