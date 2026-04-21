@@ -36,3 +36,5 @@ jobs:
       - name: Sync built help docs to live portal
         run: |
           rsync -rltvz --delete --no-group --no-owner frontend/help/ /opt/otp-relay/frontend/help/
+          ls -l /opt/otp-relay/frontend/help/manifest.json
+          ls -l /optotp-relay/frontend/help/assets | head
