@@ -4,7 +4,7 @@
 #
 # Delivery model: OTP is displayed on-screen via polling. Email is NOT used
 # for OTP delivery. SMTP config and /admin/smtp-test are retained for
-# diagnostics only.
+# diagnostics only. This is a test
 
 import os, re, asyncio, logging, smtplib, json, secrets
 from collections import deque
