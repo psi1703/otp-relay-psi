@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# =============================================================================
+# =============================================================================+
 # install.sh — Fresh install of OTP Relay from the git repository
 # Ubuntu 24.04 LTS · Exchange SMTP · LAN only
 #
@@ -7,7 +7,7 @@
 #   git clone git@github.com:SCH-INIT/otp-relay.git /opt/otp-relay
 #   cd /opt/otp-relay
 #   sudo bash install.sh
-# =============================================================================
+# =============================================================================+
 
 set -euo pipefail
 
