@@ -1602,7 +1602,7 @@ function HelpView() {
     window.addEventListener("focus", handleFocus);
     pollId = window.setInterval(() => {
       syncHelpDocs({ silent: true });
-    }, 60000);
+    }, 5000);
 
     return () => {
       cancelled = true;
