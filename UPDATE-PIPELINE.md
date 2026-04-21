@@ -1,9 +1,5 @@
 # OTP Relay Portal — Update Pipeline Guide
 
-This guide documents the **update pipeline architecture** for `psi1703/otp-relay-psi`.
-
-It is meant to live **alongside** the main project `README.md`, not replace it.
-
 ---
 
 ## What this guide covers
