@@ -34,17 +34,6 @@ A second service (`otp-monitor`) runs alongside the main app. It pings the iPhon
 
 Only one user is active at a time. This is a deliberate safety constraint: because OTP SMS messages carry no user-identifying information, the server cannot match an incoming SMS to a specific person. Concurrent active users would cause mis-delivery. The 90-second slot window keeps wait times short — a normal flow completes in under 30 seconds.
 
----
-## Help Docs Deployment
-
-The portal Help Docs are built from `docs/help/` and deployed automatically through a self-hosted GitHub Actions runner on the Raspberry Pi.
-
-See [HELP-DOCS-DEPLOYMENT.md](./HELP-DOCS-DEPLOYMENT.md) for:
-- source and generated doc structure
-- image asset rules
-- workflow behavior
-- runner setup
-- deployment and troubleshooting notes
 
 ---
 
