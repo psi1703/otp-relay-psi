@@ -45,11 +45,18 @@ See [HELP-DOCS-DEPLOYMENT.md](./HELP-DOCS-DEPLOYMENT.md) for:
 - workflow behavior
 - runner setup
 - deployment and troubleshooting notes
+
 ---
 
+## Update pipeline
+
+Application code, portal UI, Help Docs, and server configuration are deployed through separate GitHub Actions workflows on the Raspberry Pi self-hosted runner.
+
+See [UPDATE-PIPELINE.md](./UPDATE-PIPELINE.md) for deployment flow, workflow triggers, server-config deployment behavior, sudo requirements, and troubleshooting.
 ## Repository Structure
 
 ```
+
 otp-relay/
 ├── main.py                  # FastAPI application
 ├── monitor.py               # Phone watcher + WhatsApp alert forwarder
