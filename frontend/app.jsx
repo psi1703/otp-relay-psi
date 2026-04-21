@@ -1030,7 +1030,6 @@ function WizardView({ user, saveWizard, wizardStatus, openStep, setOpenStep, don
         <div className="card side-card">
           <div className="side-card-title">Quick links</div>
           <div className="quick-links">
-            <a className="quick-link" href="https://srvotp26.init-db.lan"><span>OTP Relay</span><small>Claim first</small></a>
             <a className="quick-link" href="https://direct.rta.ae"><span>RTA Automation Portal</span><small>Main portal</small></a>
             <a className="quick-link" href="https://srvterminal.init-db.lan"><span>Terminal Server</span><small>Outside UAE</small></a>
             <a className="quick-link" href="https://ettisal.rta.ae/vendors"><span>Ivanti VPN</span><small>Install/test</small></a>
@@ -1313,89 +1312,29 @@ function HelpView() {
         ))}
       </div>
       <div className="side-panel">
-        <div className="card side-card">
-          <div className="side-card-title">Contacts</div>
-          <div className="contact-card">
-            <strong>Jathin</strong>
-            <div className="small">
-              RTA account creation, IAM username, ADM notification
-            </div>
-          </div>
-          <div className="contact-card">
-            <strong>Amer Darwich</strong>
-            <div className="small">
-              ADM account, PAM onboard list, OTP token assignment
-            </div>
-          </div>
-          <div className="contact-card">
-            <strong>Christian Schilling</strong>
-            <div className="small">Admin oversight and escalation</div>
-          </div>
-          <div className="contact-card">
-            <strong>RTA IT Support</strong>
-            <div className="small">
-              VPN access grant and access issues via the RTA Automation Portal →
-              IT Help Desk
-            </div>
+        <div className="side-card-title" style={{ marginBottom: 12 }}>Contacts</div>
+        <div className="card side-card contact-card">
+          <strong>Jathin</strong>
+          <div className="small">
+            RTA account creation, IAM username, ADM notification
           </div>
         </div>
-      </div>
-    </div>
-  );
-}) {
-  const sections = [
-    ['Using this portal', [
-      ['How do I use this portal to get my OTP?', 'Enter your token and claim the slot first. If someone is ahead of you, wait. Only when the portal says “Go trigger your OTP now” should you request the OTP from the RTA platform. The code appears on-screen in the portal.'],
-      ['I claimed a slot but the OTP never appeared', 'Your 90-second active slot may have expired, or you triggered the OTP too early. Claim → wait for green light → trigger OTP.'],
-      ['Where do I find my token?', 'Your token is assigned by IT. If you do not have one, ask Amer or Jathin to add you to the user list.']
-    ]],
-    ['Password & accounts', [
-      ['What are the RTA password requirements?', 'Use more than 10 characters and include at least one number, one uppercase letter, and one special character. Avoid names, dictionary words, and simple sequences.'],
-      ['When do passwords expire?', 'Both IITS and ADM passwords expire after 90 days. No reminder is sent, which is why the dashboard tracks the countdown.'],
-      ['What accounts will I have?', 'IITS for VPN and reset flows, ADM for PAM and privileged access. Oracle Authenticator is used as the second factor.']
-    ]],
-    ['VPN & server access', [
-      ['How do I connect to the RTA VPN?', 'Install Ivanti Secure Access Client and add the vendor URL https://ettisal.rta.ae/vendors. Use your IITS account plus Oracle Authenticator TOTP.'],
-      ['How do I use PAM?', 'Connect to the VPN, open PAM, log in with rtadom\\IITS_*USERNAME* and the TOTP, search for the account, and use PSM-RDP to connect.'],
-      ['How do I transfer files?', 'Use WinSCP to connect to the SFTP host 10.11.174.40 on port 122 via VPN, then move files from SFTP to the target server.']
-    ]],
-    ['Terminal server', [
-      ['Why do I need the terminal server?', 'Some reset links and RTA pages only work inside the UAE. If you are outside the UAE, connect to srvterminal.init-db.lan first.'],
-      ['Browser access', 'Open https://srvterminal.init-db.lan, accept the certificate warning, log in, then access the required RTA links inside the remote session.'],
-      ['Windows RDP access', 'Use Remote Desktop Connection to 172.31.10.82 or srvterminal, then log in with your domain credentials.']
-    ]],
-  ];
-
-  return (
-    <div className="help-grid">
-      <div className="card main-panel">
-        <div className="eyebrow">// Documentation</div>
-        <h1 className="h1">Help & Docs</h1>
-        <div className="sub">This keeps the current help content, but in a wider layout that uses the space properly.</div>
-        {sections.map(([label, items]) => (
-          <div key={label}>
-            <div className="help-section">{label}</div>
-            <div className="faq-stack">
-              {items.map(([q, a]) => {
-                const open = !!faqOpen[q];
-                return (
-                  <div className="faq" key={q}>
-                    <div className="faq-q" onClick={() => setFaqOpen(s => ({ ...s, [q]: !s[q] }))}><span>{q}</span><span>{open ? '▴' : '▾'}</span></div>
-                    {open && <div className="faq-a">{a}</div>}
-                  </div>
-                );
-              })}
-            </div>
+        <div className="card side-card contact-card">
+          <strong>Amer Darwich</strong>
+          <div className="small">
+            ADM account, PAM onboard list, OTP token assignment
           </div>
-        ))}
-      </div>
-      <div className="side-panel">
-        <div className="card side-card">
-          <div className="side-card-title">Contacts</div>
-          <div className="contact-card"><strong>Jathin</strong><div className="small">RTA account creation, IAM username, ADM notification</div></div>
-          <div className="contact-card"><strong>Amer Darwich</strong><div className="small">ADM account, PAM onboard list, OTP token assignment</div></div>
-          <div className="contact-card"><strong>Christian Schilling</strong><div className="small">Admin oversight and escalation</div></div>
-          <div className="contact-card"><strong>RTA IT Support</strong><div className="small">VPN access grant and access issues via the RTA Automation Portal → IT Help Desk</div></div>
+        </div>
+        <div className="card side-card contact-card">
+          <strong>Christian Schilling</strong>
+          <div className="small">Admin oversight and escalation</div>
+        </div>
+        <div className="card side-card contact-card">
+          <strong>RTA IT Support</strong>
+          <div className="small">
+            VPN access grant and access issues via the RTA Automation Portal →
+            IT Help Desk
+          </div>
         </div>
       </div>
     </div>
@@ -1411,6 +1350,11 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
   const [logStatus, setLogStatus] = useState('all');
   const [logEvent, setLogEvent] = useState('');
   const [logSearch, setLogSearch] = useState('');
+  const [wizardTokenSearch, setWizardTokenSearch] = useState('');
+  const [wizardEnvFilter, setWizardEnvFilter] = useState('all');
+  const [wizardProgressFilter, setWizardProgressFilter] = useState('all');
+  const [wizardWindowFilter, setWizardWindowFilter] = useState('all');
+  const [showAdminConfig, setShowAdminConfig] = useState(false);
 
   useEffect(() => {
     if (admin.session && !admin.data) loadAdminData();
@@ -1425,7 +1369,7 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
           <div className="sub">Use a password or 4-digit PIN. This is shared for portal admins.</div>
           <div className="form-grid" style={{ marginTop: 18 }}>
             {admin.mode === 'setup' && admin.configured && <div className="field"><label>Current credential</label><input type="password" value={admin.current} onChange={e => setAdmin(s => ({ ...s, current: e.target.value }))} /></div>}
-            <div className="field"><label>{admin.mode === 'setup' ? 'New credential' : 'Credential'}</label><input type="password" value={admin.credential} onChange={e => setAdmin(s => ({ ...s, credential: e.target.value }))} /></div>
+            <div className="field"><label>{admin.mode === 'setup' ? 'New credential' : 'Credential'}</label><input type="password" value={admin.credential} onChange={e => setAdmin(s => ({ ...s, credential: e.target.value }))} /></div>}
             {admin.mode === 'setup' && <div className="field"><label>Confirm credential</label><input type="password" value={admin.confirm} onChange={e => setAdmin(s => ({ ...s, confirm: e.target.value }))} /></div>}
             {admin.error && <div className="error-box">{admin.error}</div>}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -1451,6 +1395,37 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
       const hay = `${entry.token || ''} ${entry.event || ''} ${entry.detail || ''}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
+    return true;
+  });
+
+  const now = Date.now();
+  const filteredUsers = users.filter(user => {
+    const q = wizardTokenSearch.trim().toLowerCase();
+    if (q) {
+      const hay = `${user.token || ''} ${user.iits_username || ''} ${user.adm_username || ''} ${user.name || ''} ${user.email || ''} ${user.test_env || ''} ${user.prod_env || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+
+    if (wizardEnvFilter === 'test' && !user.test_env) return false;
+    if (wizardEnvFilter === 'prod' && !user.prod_env) return false;
+    if (wizardEnvFilter === 'any' && !(user.test_env || user.prod_env)) return false;
+
+    const pct = Math.round((allDone(user).length / STEPS.length) * 100);
+    if (wizardProgressFilter === 'not-started' && pct !== 0) return false;
+    if (wizardProgressFilter === 'in-progress' && (pct === 0 || pct === 100)) return false;
+    if (wizardProgressFilter === 'completed' && pct !== 100) return false;
+
+    if (wizardWindowFilter !== 'all') {
+      const stamp = user.updated_at || user.lastActive;
+      if (!stamp) return false;
+      const then = new Date(stamp).getTime();
+      if (!Number.isFinite(then)) return false;
+      const ageDays = (now - then) / (1000 * 60 * 60 * 24);
+      if (wizardWindowFilter === '7d' && ageDays > 7) return false;
+      if (wizardWindowFilter === '30d' && ageDays > 30) return false;
+      if (wizardWindowFilter === '90d' && ageDays > 90) return false;
+    }
+
     return true;
   });
 
@@ -1500,13 +1475,54 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                 <button className="btn" style={{ width: 'auto', whiteSpace: 'nowrap', background: adminTab === 'wizard' ? RS.primary800 : RS.neutralWhite, color: adminTab === 'wizard' ? RS.neutralWhite : RS.neutral900, border: adminTab === 'wizard' ? 'none' : `1px solid ${RS.neutral300}` }} onClick={() => setAdminTab('wizard')}>RTA Wizard</button>
                 <button className="btn" style={{ width: 'auto', whiteSpace: 'nowrap', background: adminTab === 'otp-log' ? RS.primary800 : RS.neutralWhite, color: adminTab === 'otp-log' ? RS.neutralWhite : RS.neutral900, border: adminTab === 'otp-log' ? 'none' : `1px solid ${RS.neutral300}` }} onClick={() => setAdminTab('otp-log')}>OTP Log</button>
               </div>
-              {adminTab === 'wizard' && <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => exportWizardProgressPdf(users)}>Export PDF</button>}
+              <button
+                className="btn btn-secondary"
+                style={{ width: 'auto', padding: '0 12px', fontSize: 18, lineHeight: 1 }}
+                aria-label="Admin token settings"
+                title="Admin token settings"
+                onClick={() => setShowAdminConfig(v => !v)}
+              >
+                ⚙
+              </button>
+              {adminTab === 'wizard' && <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => exportWizardProgressPdf(filteredUsers)}>Export PDF</button>}
               <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => loadAdminData()}>Refresh</button>
             </div>
           </div>
 
           {adminTab === 'wizard' && (
             <>
+              <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14, padding: '14px 16px' }}>
+                <div className="hero-row" style={{ marginBottom: 10, paddingBottom: 10 }}>
+                  <div>
+                    <div className="side-card-title" style={{ marginBottom: 0 }}>Wizard Progress <span className="small" style={{ fontWeight: 400 }}>(current view)</span></div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <input value={wizardTokenSearch} onChange={e => setWizardTokenSearch(e.target.value)} placeholder="token, username, or env..." style={{ flex: '0 1 190px', minWidth: 190, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }} />
+                  <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
+                  <select value={wizardEnvFilter} onChange={e => setWizardEnvFilter(e.target.value)} style={{ minWidth: 150, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+                    <option value="all">All env</option>
+                    <option value="test">Test env only</option>
+                    <option value="prod">Prod env only</option>
+                    <option value="any">Any env assigned</option>
+                  </select>
+                  <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
+                  <select value={wizardProgressFilter} onChange={e => setWizardProgressFilter(e.target.value)} style={{ minWidth: 150, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+                    <option value="all">All progress</option>
+                    <option value="not-started">Not started</option>
+                    <option value="in-progress">In progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                  <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
+                  <select value={wizardWindowFilter} onChange={e => setWizardWindowFilter(e.target.value)} style={{ minWidth: 145, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+                    <option value="all">All activity</option>
+                    <option value="7d">Last 7 days</option>
+                    <option value="30d">Last 30 days</option>
+                    <option value="90d">Last 90 days</option>
+                  </select>
+                </div>
+              </div>
+
               {pendingAdminTasks.length > 0 && (
                 <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14 }}>
                   <div className="eyebrow">// Pending admin tasks</div>
@@ -1539,7 +1555,9 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                     </tr>
                   </thead>
                   <tbody>
-                  {users.sort((a,b) => a.token.localeCompare(b.token)).map(u => {
+                  {filteredUsers.length === 0 ? (
+                    <tr><td colSpan="9" className="small" style={{ padding: '16px' }}>No matching wizard users.</td></tr>
+                  ) : filteredUsers.sort((a,b) => a.token.localeCompare(b.token)).map(u => {
                     const pct = Math.round((allDone(u).length / STEPS.length) * 100);
                     return (
                       <tr key={u.token}>
@@ -1628,12 +1646,14 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
         </div>
 
         <div className="side-panel" style={{ minWidth: 260, maxWidth: 340 }}>
-          <div className="card side-card">
-            <div className="side-card-title">Admin token config</div>
-            <div className="field"><label>Admin tokens</label><input value={admin.configTokens} onChange={e => setAdmin(s => ({ ...s, configTokens: e.target.value }))} /></div>
-            <div className="small" style={{ marginTop: 10 }}>Seeded for Jathin, Amer, and Christian, but editable from the portal.</div>
-            <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={saveConfig}>Save config</button>
-          </div>
+          {showAdminConfig && (
+            <div className="card side-card">
+              <div className="side-card-title">Admin token config</div>
+              <div className="field"><label>Admin tokens</label><input value={admin.configTokens} onChange={e => setAdmin(s => ({ ...s, configTokens: e.target.value }))} /></div>
+              <div className="small" style={{ marginTop: 10 }}>Seeded for Jathin, Amer, and Christian, but editable from the portal.</div>
+              <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={saveConfig}>Save config</button>
+            </div>
+          )}
 
           {adminTab === 'wizard' && (
             <div className="card side-card">
@@ -1641,16 +1661,6 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
               <div className="notes-list">
                 <div className="small">This tab is for onboarding status, usernames, reminder dates, and the next admin-owned step for each user.</div>
                 <div className="small">Use the pending tasks panel to mark admin actions complete.</div>
-              </div>
-            </div>
-          )}
-
-          {adminTab === 'otp-log' && (
-            <div className="card side-card">
-              <div className="side-card-title">OTP log overview</div>
-              <div className="notes-list">
-                <div className="small">Filter by event category and status, or search using a user token such as SCH.</div>
-                <div className="small">Use this tab for operational relay troubleshooting and queue visibility.</div>
               </div>
             </div>
           )}
