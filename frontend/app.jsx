@@ -1,4 +1,4 @@
-const { useEffect, useMemo, useRef, useState } = React;
+const { useEffect, useMemo, useState } = React;
 
 const CONFIG = {
   CLAIM_EXPIRY_SEC: 90,
@@ -382,8 +382,8 @@ function statusPillStyle(status) {
 }
 
 
-function exportWizardProgressPdf(users) {
-  const safeUsers = [...(users || [])]
+function exportWizardProgressPdf(sourceUsers) {
+  const safeUsers = [...(sourceUsers || users || [])]
     .sort((a, b) => (a.token || '').localeCompare(b.token || ''));
   const rows = safeUsers.map(user => {
     const doneSteps = STEPS.filter(step => getVisibleDone(user, step));
@@ -440,7 +440,7 @@ function exportWizardProgressPdf(users) {
       <body>
         <h1>RTA Wizard Progress</h1>
         <div class="sub">Export for sharing with RTA</div>
-        <div class="meta">Generated: ${new Date().toLocaleString()} · Users with progress: ${safeUsers.length}</div>
+        <div class="meta">Generated: ${new Date().toLocaleString()} · Total users: ${safeUsers.length}</div>
         ${rows || '<div>No users with progress available for export.</div>'}
       </body>
     </html>
@@ -1082,142 +1082,44 @@ function CountdownEntry({ label, date, onDateChange, onReset }) {
   );
 }
 
-function HelpView() {
+function HelpView({ faqOpen, setFaqOpen } = {}) {
   const [manifest, setManifest] = useState(null);
   const [docHtml, setDocHtml] = useState({});
   const [docOpen, setDocOpen] = useState({});
-  const [helpError, setHelpError] = useState("");
-  const [helpStatus, setHelpStatus] = useState({
-    lastCheckedAt: "",
-    lastUpdatedAt: "",
-    autoRefreshEnabled: true,
-  });
-  const [helpNotice, setHelpNotice] = useState("");
-  const manifestRef = useRef(null);
+  const [helpError, setHelpError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
-    let pollId = null;
-    let noticeId = null;
 
-    function docsSignature(data) {
-      if (!data) return "";
-      if (data.sourceSignature) return data.sourceSignature;
-      if (data.generatedAt) return data.generatedAt;
-      return JSON.stringify(
-        (data.docs || []).map((doc) => [
-          doc.slug,
-          doc.title,
-          doc.section,
-          doc.order,
-          doc.htmlPath,
-        ]),
-      );
-    }
-
-    function stamp() {
-      return new Date().toISOString();
-    }
-
-    async function fetchManifest() {
-      const manifestRes = await fetch("/help/manifest.json", {
-        cache: "no-store",
-      });
-      if (!manifestRes.ok) throw new Error(`manifest ${manifestRes.status}`);
-      return manifestRes.json();
-    }
-
-    async function fetchDocBundle(manifestJson) {
-      const loaded = {};
-      await Promise.all(
-        (manifestJson.docs || []).map(async (doc) => {
-          const res = await fetch(doc.htmlPath, { cache: "no-store" });
-          if (!res.ok) throw new Error(`doc ${doc.slug} ${res.status}`);
-          loaded[doc.slug] = await res.text();
-        }),
-      );
-      return loaded;
-    }
-
-    async function syncHelpDocs({ force = false, silent = false } = {}) {
+    async function loadHelpDocs() {
       try {
-        if (!silent) setHelpError("");
-
-        const manifestJson = await fetchManifest();
+        setHelpError('');
+        const manifestRes = await fetch('/help/manifest.json', { cache: 'no-store' });
+        if (!manifestRes.ok) throw new Error(`manifest ${manifestRes.status}`);
+        const manifestJson = await manifestRes.json();
         if (cancelled) return;
-
-        const current = manifestRef.current;
-        const currentSignature = docsSignature(current);
-        const nextSignature = docsSignature(manifestJson);
-        const changed = force || !current || currentSignature !== nextSignature;
-
-        if (!changed) {
-          setHelpStatus((s) => ({
-            ...s,
-            lastCheckedAt: stamp(),
-            autoRefreshEnabled: true,
-          }));
-          return;
-        }
-
-        const loaded = await fetchDocBundle(manifestJson);
-        if (cancelled) return;
-
-        manifestRef.current = manifestJson;
         setManifest(manifestJson);
-        setDocHtml(loaded);
-        setHelpError("");
-        setHelpStatus((s) => ({
-          ...s,
-          lastCheckedAt: stamp(),
-          lastUpdatedAt: manifestJson.generatedAt || stamp(),
-          autoRefreshEnabled: true,
-        }));
 
-        if (current && currentSignature && currentSignature !== nextSignature) {
-          setHelpNotice("Documentation updated automatically.");
-          if (noticeId) clearTimeout(noticeId);
-          noticeId = setTimeout(() => {
-            if (!cancelled) setHelpNotice("");
-          }, 4000);
-        }
+        const loaded = {};
+        await Promise.all(
+          (manifestJson.docs || []).map(async (doc) => {
+            const res = await fetch(doc.htmlPath, { cache: 'no-store' });
+            if (!res.ok) throw new Error(`doc ${doc.slug} ${res.status}`);
+            loaded[doc.slug] = await res.text();
+          })
+        );
+
+        if (!cancelled) setDocHtml(loaded);
       } catch (err) {
         if (!cancelled) {
-          console.error("Failed to load help docs", err);
-          setHelpError("Documentation could not be loaded right now.");
-          setHelpStatus((s) => ({
-            ...s,
-            lastCheckedAt: stamp(),
-            autoRefreshEnabled: true,
-          }));
+          console.error('Failed to load help docs', err);
+          setHelpError('Documentation could not be loaded right now.');
         }
       }
     }
 
-    function handleFocus() {
-      syncHelpDocs({ silent: true });
-    }
-
-    function handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        syncHelpDocs({ silent: true });
-      }
-    }
-
-    syncHelpDocs({ force: true });
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    pollId = window.setInterval(() => {
-      syncHelpDocs({ silent: true });
-    }, 5000);
-
-    return () => {
-      cancelled = true;
-      if (pollId) window.clearInterval(pollId);
-      if (noticeId) window.clearTimeout(noticeId);
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
+    loadHelpDocs();
+    return () => { cancelled = true; };
   }, []);
 
   const grouped = {};
@@ -1231,48 +1133,12 @@ function HelpView() {
       <div className="card main-panel">
         <div className="eyebrow">// Documentation</div>
         <h1 className="h1">Help & Docs</h1>
-        <div className="sub">
-          Documentation is loaded from the repository build output and is
-          rechecked automatically every 5 seconds and whenever you return to
-          this tab.
-        </div>
+        <div className="sub">Documentation is loaded from the repository build output and updates when the help docs are rebuilt.</div>
 
-        {(helpStatus.lastUpdatedAt || helpStatus.lastCheckedAt) && (
-          <div className="small" style={{ marginTop: 8, opacity: 0.8 }}>
-            {helpStatus.lastUpdatedAt && (
-              <span>
-                Last docs update seen: {fmtShortDate(helpStatus.lastUpdatedAt)}
-              </span>
-            )}
-            {helpStatus.lastUpdatedAt && helpStatus.lastCheckedAt && (
-              <span> · </span>
-            )}
-            {helpStatus.lastCheckedAt && (
-              <span>Last check: {fmtShortDate(helpStatus.lastCheckedAt)}</span>
-            )}
-          </div>
-        )}
-
-        {helpNotice && (
-          <div
-            className="card progress-card"
-            style={{ boxShadow: "none", marginTop: 16 }}
-          >
-            <div className="small">{helpNotice}</div>
-          </div>
-        )}
-
-        {helpError && (
-          <div className="error-box" style={{ marginTop: 16 }}>
-            {helpError}
-          </div>
-        )}
+        {helpError && <div className="error-box" style={{ marginTop: 16 }}>{helpError}</div>}
 
         {!manifest && !helpError && (
-          <div
-            className="card progress-card"
-            style={{ boxShadow: "none", marginTop: 16 }}
-          >
+          <div className="card progress-card" style={{ boxShadow: 'none', marginTop: 16 }}>
             <div className="small">Loading documentation…</div>
           </div>
         )}
@@ -1285,22 +1151,13 @@ function HelpView() {
                 const open = !!docOpen[doc.slug];
                 return (
                   <div className="faq" key={doc.slug}>
-                    <div
-                      className="faq-q"
-                      onClick={() =>
-                        setDocOpen((s) => ({ ...s, [doc.slug]: !s[doc.slug] }))
-                      }
-                    >
+                    <div className="faq-q" onClick={() => setDocOpen(s => ({ ...s, [doc.slug]: !s[doc.slug] }))}>
                       <span>{doc.title}</span>
-                      <span>{open ? "▴" : "▾"}</span>
+                      <span>{open ? '▴' : '▾'}</span>
                     </div>
                     {open && (
-                      <div className="faq-a" style={{ display: "block" }}>
-                        <div
-                          dangerouslySetInnerHTML={{
-                            __html: docHtml[doc.slug] || "<p>Loading…</p>",
-                          }}
-                        />
+                      <div className="faq-a" style={{ display: 'block' }}>
+                        <div dangerouslySetInnerHTML={{ __html: docHtml[doc.slug] || '<p>Loading…</p>' }} />
                       </div>
                     )}
                   </div>
@@ -1310,35 +1167,33 @@ function HelpView() {
           </div>
         ))}
       </div>
-      <div className="side-panel" style={{ alignSelf: 'start', display: 'grid', gap: 10, gridAutoRows: 'max-content' }}>
-        <div className="side-card-title" style={{ marginBottom: 4 }}>Contacts</div>
-        <div className="card side-card contact-card" style={{ padding: '12px 14px', minHeight: 'unset', height: 'auto', margin: 0, alignSelf: 'start' }}>
-          <strong>Jathin</strong>
-          <div className="small" style={{ marginTop: 4 }}>
-            RTA account creation, IAM username, ADM notification
+      <div className="side-panel" style={{ alignSelf: 'flex-start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="card side-card" style={{ marginBottom: 0 }}>
+            <div className="side-card-title" style={{ marginBottom: 0 }}>Contacts</div>
           </div>
-        </div>
-        <div className="card side-card contact-card" style={{ padding: '12px 14px', minHeight: 'unset', height: 'auto', margin: 0, alignSelf: 'start' }}>
-          <strong>Amer Darwich</strong>
-          <div className="small" style={{ marginTop: 4 }}>
-            ADM account, PAM onboard list, OTP token assignment
+          <div className="card side-card" style={{ marginBottom: 0 }}>
+            <strong>Jathin</strong>
+            <div className="small">RTA account creation, IAM username, ADM notification</div>
           </div>
-        </div>
-        <div className="card side-card contact-card" style={{ padding: '12px 14px', minHeight: 'unset', height: 'auto', margin: 0, alignSelf: 'start' }}>
-          <strong>Christian Schilling</strong>
-          <div className="small" style={{ marginTop: 4 }}>Admin oversight and escalation</div>
-        </div>
-        <div className="card side-card contact-card" style={{ padding: '12px 14px', minHeight: 'unset', height: 'auto', margin: 0, alignSelf: 'start' }}>
-          <strong>RTA IT Support</strong>
-          <div className="small" style={{ marginTop: 4 }}>
-            VPN access grant and access issues via the RTA Automation Portal →
-            IT Help Desk
+          <div className="card side-card" style={{ marginBottom: 0 }}>
+            <strong>Amer Darwich</strong>
+            <div className="small">ADM account, PAM onboard list, OTP token assignment</div>
+          </div>
+          <div className="card side-card" style={{ marginBottom: 0 }}>
+            <strong>Christian Schilling</strong>
+            <div className="small">Admin oversight and escalation</div>
+          </div>
+          <div className="card side-card" style={{ marginBottom: 0 }}>
+            <strong>RTA IT Support</strong>
+            <div className="small">VPN access grant and access issues via the RTA Automation Portal → IT Help Desk</div>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 function completedStepsList(user) {
   return STEPS.filter(step => getVisibleDone(user, step));
@@ -1350,10 +1205,9 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
   const [logEvent, setLogEvent] = useState('');
   const [logSearch, setLogSearch] = useState('');
   const [wizardTokenSearch, setWizardTokenSearch] = useState('');
-  const [wizardEnvFilter, setWizardEnvFilter] = useState('all');
-  const [wizardProgressFilter, setWizardProgressFilter] = useState('all');
-  const [wizardWindowFilter, setWizardWindowFilter] = useState('all');
-  const [showAdminConfig, setShowAdminConfig] = useState(false);
+  const [wizardEnv, setWizardEnv] = useState('all');
+  const [wizardProgress, setWizardProgress] = useState('all');
+  const [showAdminTokenConfig, setShowAdminTokenConfig] = useState(false);
 
   useEffect(() => {
     if (admin.session && !admin.data) loadAdminData();
@@ -1397,32 +1251,18 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
     return true;
   });
 
-  const now = Date.now();
   const filteredUsers = users.filter(user => {
-    const q = wizardTokenSearch.trim().toUpperCase();
-    if (q) {
-      if ((user.token || '').toUpperCase() !== q) return false;
+    const tokenNeedle = normalizeToken(wizardTokenSearch);
+    if (tokenNeedle) {
+      if (normalizeToken(user.token || '') !== tokenNeedle) return false;
     }
+    if (wizardEnv === 'test' && !(user.test_env || '').trim()) return false;
+    if (wizardEnv === 'prod' && !(user.prod_env || '').trim()) return false;
 
-    if (wizardEnvFilter === 'test' && !user.test_env) return false;
-    if (wizardEnvFilter === 'prod' && !user.prod_env) return false;
-    if (wizardEnvFilter === 'any' && !(user.test_env || user.prod_env)) return false;
-
-    const pct = Math.round((allDone(user).length / STEPS.length) * 100);
-    if (wizardProgressFilter === 'not-started' && pct !== 0) return false;
-    if (wizardProgressFilter === 'in-progress' && (pct === 0 || pct === 100)) return false;
-    if (wizardProgressFilter === 'completed' && pct !== 100) return false;
-
-    if (wizardWindowFilter !== 'all') {
-      const stamp = user.updated_at || user.lastActive;
-      if (!stamp) return false;
-      const then = new Date(stamp).getTime();
-      if (!Number.isFinite(then)) return false;
-      const ageDays = (now - then) / (1000 * 60 * 60 * 24);
-      if (wizardWindowFilter === '7d' && ageDays > 7) return false;
-      if (wizardWindowFilter === '30d' && ageDays > 30) return false;
-      if (wizardWindowFilter === '90d' && ageDays > 90) return false;
-    }
+    const doneCount = allDone(user).length;
+    if (wizardProgress === 'not-started' && doneCount !== 0) return false;
+    if (wizardProgress === 'in-progress' && !(doneCount > 0 && doneCount < STEPS.length)) return false;
+    if (wizardProgress === 'completed' && doneCount !== STEPS.length) return false;
 
     return true;
   });
@@ -1460,7 +1300,7 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
         <div className="card stat-card"><div className="stat-label">Audit entries</div><div className="stat-value">{admin.data?.logTotal || 0}</div></div>
       </div>
 
-      <div className="wide-layout" style={{ gridTemplateColumns: showAdminConfig ? "minmax(0, 1fr) minmax(280px, 320px)" : "minmax(0, 1fr)", alignItems: "start", gap: 16 }}>
+      <div className="wide-layout" style={{ gridTemplateColumns: "minmax(0, 1fr)", alignItems: "start", gap: 16 }}>
         <div className="card main-panel">
           <div className="hero-row">
             <div>
@@ -1473,17 +1313,9 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                 <button className="btn" style={{ width: 'auto', whiteSpace: 'nowrap', background: adminTab === 'wizard' ? RS.primary800 : RS.neutralWhite, color: adminTab === 'wizard' ? RS.neutralWhite : RS.neutral900, border: adminTab === 'wizard' ? 'none' : `1px solid ${RS.neutral300}` }} onClick={() => setAdminTab('wizard')}>RTA Wizard</button>
                 <button className="btn" style={{ width: 'auto', whiteSpace: 'nowrap', background: adminTab === 'otp-log' ? RS.primary800 : RS.neutralWhite, color: adminTab === 'otp-log' ? RS.neutralWhite : RS.neutral900, border: adminTab === 'otp-log' ? 'none' : `1px solid ${RS.neutral300}` }} onClick={() => setAdminTab('otp-log')}>OTP Log</button>
               </div>
-              {adminTab === 'wizard' && <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => exportWizardProgressPdf(admin.data?.users || [])}>Export PDF</button>}
+              {adminTab === 'wizard' && <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => exportWizardProgressPdf(users)}>Export PDF</button>}
               <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => loadAdminData()}>Refresh</button>
-              <button
-                className="btn btn-secondary"
-                style={{ width: 'auto', padding: '0 12px', fontSize: 18, lineHeight: 1 }}
-                aria-label="Admin token settings"
-                title="Admin token settings"
-                onClick={() => setShowAdminConfig(v => !v)}
-              >
-                ⚙
-              </button>
+              <button className="btn btn-secondary" style={{ width: 46, minWidth: 46, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, lineHeight: 1 }} aria-label="Admin token settings" title="Admin token settings" onClick={() => setShowAdminTokenConfig(true)}>⚙</button>
             </div>
           </div>
 
@@ -1496,68 +1328,87 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <input value={wizardTokenSearch} onChange={e => setWizardTokenSearch(e.target.value)} placeholder="token or username..." style={{ flex: '0 1 180px', minWidth: 180, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }} />
+                  <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="small mono" style={{ textTransform: 'uppercase', letterSpacing: '.08em' }}>Env</span>
-                    {[['all', 'All'], ['test', 'Test'], ['prod', 'Prod'], ['any', 'Any']].map(([val, label]) => (
-                      <button key={val} style={filterChipStyle(val === 'all' ? 'all' : 'info', wizardEnvFilter === val)} onClick={() => setWizardEnvFilter(val)}>{label}</button>
+                    <span className="small mono" style={{ textTransform: 'uppercase', letterSpacing: '.08em' }}>ENV</span>
+                    {[
+                      ['all', 'ALL'],
+                      ['test', 'TEST'],
+                      ['prod', 'PROD'],
+                    ].map(([value, label]) => (
+                      <button key={value} style={filterChipStyle(value, wizardEnv === value)} onClick={() => setWizardEnv(value)}>{label}</button>
                     ))}
                   </div>
                   <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span className="small mono" style={{ textTransform: 'uppercase', letterSpacing: '.08em' }}>Progress</span>
-                    {[['all', 'All'], ['not-started', 'Not started'], ['in-progress', 'In progress'], ['completed', 'Completed']].map(([val, label]) => (
-                      <button key={val} style={filterChipStyle(val === 'all' ? 'all' : 'info', wizardProgressFilter === val)} onClick={() => setWizardProgressFilter(val)}>{label}</button>
-                    ))}
-                  </div>
-                  <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="small mono" style={{ textTransform: 'uppercase', letterSpacing: '.08em' }}>Activity</span>
-                    <select value={wizardWindowFilter} onChange={e => setWizardWindowFilter(e.target.value)} style={{ minWidth: 145, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
-                      <option value="all">All activity</option>
-                      <option value="7d">Last 7 days</option>
-                      <option value="30d">Last 30 days</option>
-                      <option value="90d">Last 90 days</option>
+                    <select value={wizardProgress} onChange={e => setWizardProgress(e.target.value)} style={{ minWidth: 165, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+                      <option value="all">All progress</option>
+                      <option value="not-started">Not started</option>
+                      <option value="in-progress">In progress</option>
+                      <option value="completed">Completed</option>
                     </select>
                   </div>
-                  <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
-                  <input value={wizardTokenSearch} onChange={e => setWizardTokenSearch(e.target.value)} placeholder="token..." style={{ flex: '0 1 140px', minWidth: 140, height: 32, border: '1px solid var(--border)', borderRadius: 4, padding: '0 10px', background: 'var(--surface)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }} />
                 </div>
               </div>
 
-              <div style={{ width: '100%', overflowX: 'visible', paddingBottom: 4 }}>
-                <table className="admin-table" style={{ width: '100%', minWidth: 0, tableLayout: 'fixed' }}>
+              <div style={{ width: '100%', overflowX: 'hidden', paddingBottom: 4 }}>
+                <table className="admin-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 54, whiteSpace: 'nowrap' }}>Token</th>
-                      <th style={{ width: 64, whiteSpace: 'nowrap' }}>IITS</th>
-                      <th style={{ width: 64, whiteSpace: 'nowrap' }}>ADM</th>
-                      <th style={{ width: 108, whiteSpace: 'nowrap' }}>Test ENV</th>
-                      <th style={{ width: 120, whiteSpace: 'nowrap' }}>Prod ENV</th>
-                      <th style={{ width: 132, whiteSpace: 'nowrap' }}>Progress</th>
-                      <th style={{ width: 92, whiteSpace: 'nowrap' }}>Activity</th>
-                      <th style={{ width: 220 }}>Completed Steps</th>
-                      <th style={{ width: 260 }}>Next Step</th>
+                      <th style={{ width: '4%', whiteSpace: 'nowrap' }}>Token</th>
+                      <th style={{ width: '6%', whiteSpace: 'nowrap' }}>IITS</th>
+                      <th style={{ width: '6%', whiteSpace: 'nowrap' }}>ADM</th>
+                      <th style={{ width: '12%', whiteSpace: 'nowrap' }}>Test ENV</th>
+                      <th style={{ width: '12%', whiteSpace: 'nowrap' }}>Prod ENV</th>
+                      <th style={{ width: '12%', whiteSpace: 'nowrap' }}>Progress</th>
+                      <th style={{ width: '8%', whiteSpace: 'nowrap' }}>Activity</th>
+                      <th style={{ width: '24%', whiteSpace: 'nowrap' }}>Completed Steps</th>
+                      <th style={{ width: '16%', whiteSpace: 'nowrap' }}>Next Step</th>
+                      <th style={{ width: '18%', whiteSpace: 'nowrap' }}>Mark Complete</th>
                     </tr>
                   </thead>
                   <tbody>
                   {filteredUsers.length === 0 ? (
                     <tr><td colSpan="9" className="small" style={{ padding: '16px' }}>No matching wizard users.</td></tr>
-                  ) : filteredUsers.sort((a,b) => a.token.localeCompare(b.token)).map(u => {
+                  ) : filteredUsers.slice().sort((a,b) => a.token.localeCompare(b.token)).map(u => {
                     const pct = Math.round((allDone(u).length / STEPS.length) * 100);
                     return (
                       <tr key={u.token}>
-                        <td><strong>{u.token}</strong></td>
-                        <td className="mono">{u.iits_username || '—'}</td>
-                        <td className="mono">{u.adm_username || '—'}</td>
-                        <td style={{ width: 108, whiteSpace: 'nowrap' }}>{u.test_env || '—'}</td>
-                        <td style={{ width: 120, whiteSpace: 'nowrap' }}>{u.prod_env || '—'}</td>
-                        <td style={{ width: 132 }}>
+                        <td style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><strong>{u.token}</strong></td>
+                        <td className="mono" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.iits_username || '—'}</td>
+                        <td className="mono" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.adm_username || '—'}</td>
+                        <td title={u.test_env || '—'} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.test_env || '—'}</td>
+                        <td title={u.prod_env || '—'} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.prod_env || '—'}</td>
+                        <td style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}>
                           <div className="progress-bar"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
                           <div className="small" style={{ marginTop: 6 }}>{pct}%</div>
                         </td>
-                        <td style={{ width: 92, whiteSpace: 'nowrap' }}>{fmtShortDate(u.updated_at || u.lastActive)}</td>
-                        <td style={{ width: 220, verticalAlign: 'top', wordBreak: 'break-word' }}>{renderCompletedSteps(u)}</td>
-                        <td style={{ width: 260, verticalAlign: 'top', wordBreak: 'break-word' }}>{renderNextStep(u)}</td>
+                        <td style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtShortDate(u.updated_at || u.lastActive)}</td>
+                        <td title={renderCompletedSteps(u)} style={{ verticalAlign: 'top', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{renderCompletedSteps(u)}</td>
+                        <td title={renderNextStep(u)} style={{ verticalAlign: 'top', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{renderNextStep(u)}</td>
+                        <td style={{ verticalAlign: 'top' }}>
+                          {STEPS.filter(s => s.owner === 'admin' && isUnlocked(u, s)).map(s => {
+                            const done = getVisibleDone(u, s);
+                            return (
+                              <button
+                                key={s.id}
+                                onClick={() => toggleAdminStep(u.token, s.id)}
+                                style={{
+                                  display: 'block', width: '100%', marginBottom: 4, padding: '4px 8px',
+                                  fontSize: 11, fontFamily: 'JetBrains Mono, monospace', fontWeight: 600,
+                                  borderRadius: 4, cursor: 'pointer', textAlign: 'left',
+                                  background: done ? '#d1fae5' : '#f0f9ff',
+                                  border: done ? '1px solid #34d399' : '1px solid #93c5fd',
+                                  color: done ? '#065f46' : '#1e40af',
+                                }}
+                              >
+                                {done ? '✓ ' : '○ '}{s.adminLabel || s.title}
+                              </button>
+                            );
+                          })}
+                        </td>
                       </tr>
                     );
                   })}
@@ -1630,16 +1481,20 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
           )}
         </div>
 
-        {showAdminConfig && (
-          <div className="side-panel" style={{ minWidth: 280, maxWidth: 320, alignSelf: 'start' }}>
-            <div className="card side-card">
+        {showAdminTokenConfig && (
+          <div onClick={() => setShowAdminTokenConfig(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 1000 }}>
+            <div className="card side-card" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, margin: 0 }}>
               <div className="side-card-title">Admin token config</div>
               <div className="field"><label>Admin tokens</label><input value={admin.configTokens} onChange={e => setAdmin(s => ({ ...s, configTokens: e.target.value }))} /></div>
               <div className="small" style={{ marginTop: 10 }}>Seeded for Jathin, Amer, and Christian, but editable from the portal.</div>
-              <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={saveConfig}>Save config</button>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
+                <button className="btn btn-secondary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => setShowAdminTokenConfig(false)}>Close</button>
+                <button className="btn btn-primary" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => { saveConfig(); setShowAdminTokenConfig(false); }}>Save config</button>
+              </div>
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
