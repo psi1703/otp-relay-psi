@@ -1598,8 +1598,15 @@ function HelpView() {
       syncHelpDocs({ silent: true });
     }
 
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        syncHelpDocs({ silent: true });
+      }
+    }
+
     syncHelpDocs({ force: true });
     window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     pollId = window.setInterval(() => {
       syncHelpDocs({ silent: true });
     }, 5000);
@@ -1609,6 +1616,7 @@ function HelpView() {
       if (pollId) window.clearInterval(pollId);
       if (noticeId) window.clearTimeout(noticeId);
       window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -1625,7 +1633,7 @@ function HelpView() {
         <h1 className="h1">Help & Docs</h1>
         <div className="sub">
           Documentation is loaded from the repository build output and is
-          rechecked automatically every 60 seconds and whenever you return to
+          rechecked automatically every 5 seconds and whenever you return to
           this tab.
         </div>
 
