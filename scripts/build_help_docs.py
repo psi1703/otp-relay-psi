@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 
 import markdown
@@ -110,6 +111,32 @@ def collect_source_assets() -> list[Path]:
     return sorted(p for p in ASSETS_SRC.rglob("*") if p.is_file())
 
 
+def compute_source_signature(markdown_state: dict, asset_state: dict) -> str:
+    payload = json.dumps(
+        {
+            "markdown": markdown_state,
+            "assets": asset_state,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def load_previous_manifest() -> dict:
+    manifest_path = OUT_DIR / "manifest.json"
+    if not manifest_path.exists():
+        return {}
+    try:
+        return json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     RENDERED_DIR.mkdir(parents=True, exist_ok=True)
@@ -123,8 +150,8 @@ def main() -> None:
     new_asset_state: dict = {}
 
     manifest: list[dict] = []
+    changed_any = False
 
-    # Process markdown files incrementally
     for md_file in collect_source_markdown():
         rel = relative_posix(md_file, DOCS_DIR)
         file_hash = sha256_file(md_file)
@@ -141,22 +168,23 @@ def main() -> None:
             old_out = RENDERED_DIR / f"{previous_slug}.html"
             if old_out.exists():
                 old_out.unlink()
+                changed_any = True
 
         if previous_hash != file_hash or not out_file.exists():
-            write_text_if_changed(out_file, html)
+            if write_text_if_changed(out_file, html):
+                changed_any = True
 
         new_md_state[rel] = {"hash": file_hash, "slug": slug}
         manifest.append(manifest_entry)
 
-    # Remove outputs for deleted markdown files
     deleted_md = set(old_md_state) - set(new_md_state)
     for rel in deleted_md:
         old_slug = old_md_state[rel]["slug"]
         old_out = RENDERED_DIR / f"{old_slug}.html"
         if old_out.exists():
             old_out.unlink()
+            changed_any = True
 
-    # Process assets incrementally
     for asset_file in collect_source_assets():
         rel = relative_posix(asset_file, ASSETS_SRC)
         file_hash = sha256_file(asset_file)
@@ -164,18 +192,18 @@ def main() -> None:
 
         previous_hash = old_asset_state.get(rel)
         if previous_hash != file_hash or not dst.exists():
-            copy_file_if_changed(asset_file, dst)
+            if copy_file_if_changed(asset_file, dst):
+                changed_any = True
 
         new_asset_state[rel] = file_hash
 
-    # Remove deleted assets from destination
     deleted_assets = set(old_asset_state) - set(new_asset_state)
     for rel in deleted_assets:
         dst = ASSETS_DST / rel
         if dst.exists():
             dst.unlink()
+            changed_any = True
 
-    # Clean up empty asset directories left behind
     if ASSETS_DST.exists():
         for p in sorted(ASSETS_DST.rglob("*"), reverse=True):
             if p.is_dir():
@@ -185,12 +213,30 @@ def main() -> None:
                     pass
 
     manifest.sort(key=lambda x: (x["section"], x["order"], x["title"]))
-    write_text_if_changed(
+
+    previous_manifest = load_previous_manifest()
+    source_signature = compute_source_signature(new_md_state, new_asset_state)
+    previous_signature = previous_manifest.get("sourceSignature")
+    generated_at = previous_manifest.get("generatedAt") if previous_signature == source_signature else utc_now_iso()
+
+    manifest_payload = {
+        "generatedAt": generated_at,
+        "sourceSignature": source_signature,
+        "docs": manifest,
+    }
+
+    if write_text_if_changed(
         OUT_DIR / "manifest.json",
-        json.dumps({"docs": manifest}, indent=2),
-    )
+        json.dumps(manifest_payload, indent=2),
+    ):
+        changed_any = True
 
     save_state({"markdown": new_md_state, "assets": new_asset_state})
+
+    if changed_any:
+        print(f"Help docs updated. generatedAt={generated_at} sourceSignature={source_signature}")
+    else:
+        print(f"No help-doc changes detected. sourceSignature={source_signature}")
 
 
 if __name__ == "__main__":
