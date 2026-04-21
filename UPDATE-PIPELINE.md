@@ -17,23 +17,7 @@ This document explains:
 
 ---
 
-## Recommended location in the repo
 
-Save this file as one of these:
-
-- `UPDATE-PIPELINE.md`
-- `README-UPDATE-PIPELINE.md`
-- `docs/UPDATE-PIPELINE.md`
-
-Then add a short pointer in the main `README.md`, for example:
-
-```md
-## Update pipeline
-
-Application code, portal UI, Help Docs, and server configuration are deployed through separate GitHub Actions workflows on the Raspberry Pi self-hosted runner.
-
-See [UPDATE-PIPELINE.md](./UPDATE-PIPELINE.md) for deployment flow, workflow triggers, server-config deployment behavior, sudo requirements, and troubleshooting.
-```
 
 ---
 
