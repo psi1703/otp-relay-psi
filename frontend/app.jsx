@@ -1003,7 +1003,7 @@ function WizardView({ user, saveWizard, wizardStatus, openStep, setOpenStep, don
         </div>
       </div>
 
-      <div className="side-panel" style={{ alignSelf: "start", display: "grid", gap: 12 }}>
+      <div className="side-panel">
         <div className="card side-card">
           <div className="side-card-title">Your credentials</div>
           <div className="form-grid">
@@ -1310,27 +1310,27 @@ function HelpView() {
           </div>
         ))}
       </div>
-      <div className="side-panel">
-        <div className="side-card-title" style={{ marginBottom: 12 }}>Contacts</div>
-        <div className="card side-card contact-card" style={{ padding: "12px 14px", minHeight: "unset", height: "auto", flex: "0 0 auto", margin: 0 }}>
+      <div className="side-panel" style={{ alignSelf: 'start', display: 'grid', gap: 10, gridAutoRows: 'max-content' }}>
+        <div className="side-card-title" style={{ marginBottom: 4 }}>Contacts</div>
+        <div className="card side-card contact-card" style={{ padding: '12px 14px', minHeight: 'unset', height: 'auto', margin: 0, alignSelf: 'start' }}>
           <strong>Jathin</strong>
-          <div className="small">
+          <div className="small" style={{ marginTop: 4 }}>
             RTA account creation, IAM username, ADM notification
           </div>
         </div>
-        <div className="card side-card contact-card" style={{ padding: "12px 14px", minHeight: "unset", height: "auto", flex: "0 0 auto", margin: 0 }}>
+        <div className="card side-card contact-card" style={{ padding: '12px 14px', minHeight: 'unset', height: 'auto', margin: 0, alignSelf: 'start' }}>
           <strong>Amer Darwich</strong>
-          <div className="small">
+          <div className="small" style={{ marginTop: 4 }}>
             ADM account, PAM onboard list, OTP token assignment
           </div>
         </div>
-        <div className="card side-card contact-card" style={{ padding: "12px 14px", minHeight: "unset", height: "auto", flex: "0 0 auto", margin: 0 }}>
+        <div className="card side-card contact-card" style={{ padding: '12px 14px', minHeight: 'unset', height: 'auto', margin: 0, alignSelf: 'start' }}>
           <strong>Christian Schilling</strong>
-          <div className="small">Admin oversight and escalation</div>
+          <div className="small" style={{ marginTop: 4 }}>Admin oversight and escalation</div>
         </div>
-        <div className="card side-card contact-card" style={{ padding: "12px 14px", minHeight: "unset", height: "auto", flex: "0 0 auto", margin: 0 }}>
+        <div className="card side-card contact-card" style={{ padding: '12px 14px', minHeight: 'unset', height: 'auto', margin: 0, alignSelf: 'start' }}>
           <strong>RTA IT Support</strong>
-          <div className="small">
+          <div className="small" style={{ marginTop: 4 }}>
             VPN access grant and access issues via the RTA Automation Portal →
             IT Help Desk
           </div>
@@ -1461,7 +1461,7 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
         <div className="card stat-card"><div className="stat-label">Audit entries</div><div className="stat-value">{admin.data?.logTotal || 0}</div></div>
       </div>
 
-      <div className="wide-layout" style={{ gridTemplateColumns: showAdminConfig ? "minmax(0, 1fr) minmax(280px, 320px)" : "minmax(0, 1fr)", alignItems: "start", gap: 16 }}>
+      <div className="wide-layout" style={{ gridTemplateColumns: "minmax(0, 3.1fr) minmax(260px, 0.75fr)", alignItems: "start", gap: 16 }}>
         <div className="card main-panel">
           <div className="hero-row">
             <div>
@@ -1522,19 +1522,19 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                 </div>
               </div>
 
-              <div style={{ width: '100%', overflowX: 'visible', paddingBottom: 4 }}>
-                <table className="admin-table" style={{ width: '100%', minWidth: 0, tableLayout: 'fixed' }}>
+              <div style={{ width: '100%', overflowX: 'auto', paddingBottom: 4 }}>
+                <table className="admin-table" style={{ width: 'max-content', minWidth: '100%', tableLayout: 'auto' }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 54, whiteSpace: 'nowrap' }}>Token</th>
-                      <th style={{ width: 64, whiteSpace: 'nowrap' }}>IITS</th>
-                      <th style={{ width: 64, whiteSpace: 'nowrap' }}>ADM</th>
-                      <th style={{ width: 108, whiteSpace: 'nowrap' }}>Test ENV</th>
-                      <th style={{ width: 120, whiteSpace: 'nowrap' }}>Prod ENV</th>
-                      <th style={{ width: 132, whiteSpace: 'nowrap' }}>Progress</th>
-                      <th style={{ width: 92, whiteSpace: 'nowrap' }}>Activity</th>
-                      <th style={{ width: 220 }}>Completed Steps</th>
-                      <th style={{ width: 260 }}>Next Step</th>
+                      <th style={{ minWidth: 54, whiteSpace: 'nowrap' }}>Token</th>
+                      <th style={{ minWidth: 70, whiteSpace: 'nowrap' }}>IITS</th>
+                      <th style={{ minWidth: 70, whiteSpace: 'nowrap' }}>ADM</th>
+                      <th style={{ minWidth: 128, whiteSpace: 'nowrap' }}>Test ENV</th>
+                      <th style={{ minWidth: 148, whiteSpace: 'nowrap' }}>Prod ENV</th>
+                      <th style={{ minWidth: 170, whiteSpace: 'nowrap' }}>Progress</th>
+                      <th style={{ minWidth: 104, whiteSpace: 'nowrap' }}>Activity</th>
+                      <th style={{ minWidth: 320 }}>Completed Steps</th>
+                      <th style={{ minWidth: 340 }}>Next Step</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1547,15 +1547,15 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                         <td><strong>{u.token}</strong></td>
                         <td className="mono">{u.iits_username || '—'}</td>
                         <td className="mono">{u.adm_username || '—'}</td>
-                        <td style={{ width: 108, whiteSpace: 'nowrap' }}>{u.test_env || '—'}</td>
-                        <td style={{ width: 120, whiteSpace: 'nowrap' }}>{u.prod_env || '—'}</td>
-                        <td style={{ width: 132 }}>
+                        <td style={{ minWidth: 140, whiteSpace: 'nowrap' }}>{u.test_env || '—'}</td>
+                        <td style={{ minWidth: 160, whiteSpace: 'nowrap' }}>{u.prod_env || '—'}</td>
+                        <td style={{ minWidth: 180 }}>
                           <div className="progress-bar"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
                           <div className="small" style={{ marginTop: 6 }}>{pct}%</div>
                         </td>
-                        <td style={{ width: 92, whiteSpace: 'nowrap' }}>{fmtShortDate(u.updated_at || u.lastActive)}</td>
-                        <td style={{ width: 220, verticalAlign: 'top', wordBreak: 'break-word' }}>{renderCompletedSteps(u)}</td>
-                        <td style={{ width: 260, verticalAlign: 'top', wordBreak: 'break-word' }}>{renderNextStep(u)}</td>
+                        <td style={{ minWidth: 110, whiteSpace: 'nowrap' }}>{fmtShortDate(u.updated_at || u.lastActive)}</td>
+                        <td style={{ minWidth: 220, verticalAlign: 'top' }}>{renderCompletedSteps(u)}</td>
+                        <td style={{ minWidth: 220, verticalAlign: 'top' }}>{renderNextStep(u)}</td>
                       </tr>
                     );
                   })}
@@ -1628,16 +1628,18 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
           )}
         </div>
 
-        {showAdminConfig && (
-          <div className="side-panel" style={{ minWidth: 280, maxWidth: 320, alignSelf: 'start' }}>
+        <div className="side-panel" style={{ minWidth: 260, maxWidth: 340 }}>
+          {showAdminConfig && (
             <div className="card side-card">
               <div className="side-card-title">Admin token config</div>
               <div className="field"><label>Admin tokens</label><input value={admin.configTokens} onChange={e => setAdmin(s => ({ ...s, configTokens: e.target.value }))} /></div>
               <div className="small" style={{ marginTop: 10 }}>Seeded for Jathin, Amer, and Christian, but editable from the portal.</div>
               <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={saveConfig}>Save config</button>
             </div>
-          </div>
-        )}
+          )}
+
+
+        </div>>
       </div>
     </div>
   );
