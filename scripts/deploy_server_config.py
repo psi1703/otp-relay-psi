@@ -17,6 +17,7 @@ SHELL_FILES = [
     "install.sh",
     "update.sh",
     "deploy_users.sh",
+    "setup_action-runner",
 ]
 
 SERVICE_FILES = [
