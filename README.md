@@ -131,7 +131,7 @@ otp-relay/
 
 ```bash
 # Clone the repo into the install directory
-sudo git clone git@github.com:SCH-INIT/otp-relay.git /opt/otp-relay
+sudo git clone git@github.com:psi1703/otp-relay-psi.git /opt/otp-relay
 cd /opt/otp-relay
 
 # Run the installer
