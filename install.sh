@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# =============================================================================
+# =============================================================================+
 # install.sh — Fresh install of OTP Relay from the git repository
 # Ubuntu 24.04 LTS · Exchange SMTP · LAN only
 #
@@ -7,7 +7,7 @@
 #   git clone git@github.com:SCH-INIT/otp-relay.git /opt/otp-relay
 #   cd /opt/otp-relay
 #   sudo bash install.sh
-# =============================================================================
+# =============================================================================+
 
 set -euo pipefail
 
@@ -33,14 +33,14 @@ echo -e "${DIM}Ubuntu 24.04 · Exchange SMTP${RESET}\n"
 
 # ── 1. System packages ────────────────────────────────────────────────────────
 
-section "1/7  System packages"
+section "1/8  System packages"
 apt-get update -qq
 apt-get install -y -qq python3.12 python3.12-venv python3-pip nginx openssl arping
 ok "Packages installed"
 
 # ── 2. Service account ────────────────────────────────────────────────────────
 
-section "2/7  Service account"
+section "2/8  Service account"
 if ! id otprelay &>/dev/null; then
   useradd --system --no-create-home --shell /usr/sbin/nologin otprelay
   ok "Created system user: otprelay"
@@ -50,7 +50,7 @@ fi
 
 # ── 3. Data directory ─────────────────────────────────────────────────────────
 
-section "3/7  Data directory"
+section "3/8  Data directory"
 mkdir -p "$INSTALL_DIR/data"
 chown -R otprelay:otprelay "$INSTALL_DIR/data"
 chmod 700 "$INSTALL_DIR/data"
