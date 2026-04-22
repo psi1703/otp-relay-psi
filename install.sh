@@ -192,3 +192,8 @@ echo -e "  Monitor:  sudo journalctl -u otp-monitor -f"
 echo -e "  Test:     python3 $INSTALL_DIR/test_otp_relay.py"
 echo -e "  Update:   sudo bash $INSTALL_DIR/update.sh"
 echo ""
+
+# Optional next step:
+# If this server should also act as a GitHub Actions self-hosted runner,
+# run the following after install completes:
+#   sudo bash /opt/otp-relay/setup_runner.sh <RUNNER_TOKEN>
