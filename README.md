@@ -56,6 +56,8 @@ otp-relay/
 ├── .env.template            # Config template — copy to .env and fill in
 ├── .gitignore
 ├── README.md
+├── UPDATE-PIPELINE.md
+├── HELP-DOCS-DEPLOYMENT.md
 ├── frontend/
 │   ├── index.html           # Portal shell — loads React 18 + Babel and mounts the app
 │   ├── style.css            # All styles — INIT / RS design tokens and light theme
@@ -64,6 +66,7 @@ otp-relay/
 │   └── otp-relay.conf       # nginx reverse proxy config
 ├── scripts/
 │   └── generate_sample_users.py
+|
 └── systemd/
     ├── otp-relay.service    # Main app systemd unit
     └── otp-monitor.service  # Monitor systemd unit
