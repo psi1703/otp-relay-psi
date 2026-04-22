@@ -143,6 +143,33 @@ sudo bash install.sh
 
 `install.sh` creates the venv, sets permissions, generates the TLS cert, configures nginx and both systemd services — all in one shot. It will not overwrite an existing `.env`.
 
+## Optional: GitHub Actions runner setup
+
+If this server should also act as the self-hosted GitHub Actions runner for this repo, you can configure it after the main install completes.
+
+### Before you start
+
+You will need a **fresh GitHub runner registration token**.
+
+Get it from:
+
+1. Open the repository on GitHub: `psi1703/otp-relay-psi`
+2. Go to **Settings**
+3. Open **Actions**
+4. Open **Runners**
+5. Click **New self-hosted runner**
+6. Copy the temporary registration token GitHub shows
+
+**Important:**
+- the token is temporary
+- it expires after a short time
+- if the script says the token is invalid or expired, go back to GitHub and generate a new one
+
+### Run the setup script
+
+```bash
+sudo bash /opt/otp-relay/setup_action-runner.sh <RUNNER_TOKEN>
+
 After running the installer, disable the default nginx site which would otherwise interfere:
 
 ```bash
