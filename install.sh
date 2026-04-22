@@ -64,7 +64,7 @@ if [[ ! -f "$INSTALL_DIR/venv/bin/uvicorn" ]]; then
   "$INSTALL_DIR/venv/bin/pip" install -q fastapi uvicorn openpyxl python-dotenv requests
   ok "venv created and packages installed"
 else
-  "$INSTALL_DIR/venv/bin/pip" install -q --upgrade fastapi uvicorn openpyxl python-dotenv requests bcrypt
+  "$INSTALL_DIR/venv/bin/pip" install -q --upgrade fastapi uvicorn openpyxl python-dotenv requests bcrypt markdown pyyaml
   ok "venv already exists — packages updated"
 fi
 
