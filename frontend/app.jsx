@@ -4,6 +4,7 @@ const CONFIG = {
   CLAIM_EXPIRY_SEC: 90,
   OTP_DISPLAY_SEC: 285,
   POLL_INTERVAL_MS: 3000,
+  WIZARD_REFRESH_MS: 60000,
   RING_CIRCUMFERENCE: 263.89,
 };
 
@@ -90,7 +91,7 @@ const STEPS = [
     ]
   },
   {
-    id: 'password_reset', title: 'Reset RTA Passwords', owner: 'user', icon: '🔐', time: '15 min', gate: ['save_iits', 'save_adm'], expiryKey: 'iits_pw_date', secondExpiryKey: 'adm_pw_date',
+    id: 'password_reset', title: 'Reset RTA Passwords', owner: 'user', icon: '🔐', time: '15 min', gate: ['save_iits'], expiryKey: 'iits_pw_date', secondExpiryKey: 'adm_pw_date',
     summary: 'Reset your IITS and ADM passwords, then record the reset dates so the 90-day countdown is visible.',
     details: [
       { type: 'info', text: 'The password reset link only works inside UAE. If you are outside UAE, use the Dubai terminal server first.' },
@@ -385,42 +386,30 @@ function statusPillStyle(status) {
 function exportWizardProgressPdf(sourceUsers) {
   const safeUsers = [...(sourceUsers || users || [])]
     .sort((a, b) => (a.token || '').localeCompare(b.token || ''));
+
   const rows = safeUsers.map(user => {
-    const doneSteps = STEPS.filter(step => getVisibleDone(user, step));
+    const doneUserSteps = STEPS.filter(step => step.owner === 'user' && getVisibleDone(user, step)).map(step => step.title).join(', ') || '—';
+    const doneAdminSteps = STEPS.filter(step => step.owner === 'admin' && getVisibleDone(user, step)).map(step => step.adminLabel || step.title).join(', ') || '—';
+    const nextUser = STEPS.find(step => step.owner === 'user' && isUnlocked(user, step) && !getVisibleDone(user, step));
+    const nextAdmin = STEPS.find(step => step.owner === 'admin' && isUnlocked(user, step) && !getVisibleDone(user, step));
     const pct = Math.round((allDone(user).length / STEPS.length) * 100);
-    const doneHtml = doneSteps.length
-      ? `<ol style="margin:6px 0 0 18px;padding:0;">${doneSteps.map(step => `<li style="margin:2px 0;">${step.title}</li>`).join('')}</ol>`
-      : '<div style="color:#656565;">No completed steps yet.</div>';
+
     return `
-      <div style="border:1px solid #E1E1E1;border-radius:12px;padding:16px 18px;margin:0 0 14px;background:#FFFFFF;page-break-inside:avoid;">
-        <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;">
-          <div>
-            <div style="font-size:18px;font-weight:700;color:#363A3B;">${user.token || '—'}${user.display_name ? ` — ${user.display_name}` : ''}</div>
-            <div style="font-size:12px;color:#656565;margin-top:4px;">${user.email || ''}</div>
-          </div>
-          <div style="padding:6px 12px;border-radius:999px;background:#E3EFF9;color:#006DCC;font-size:12px;font-weight:700;">${pct}% complete</div>
-        </div>
-
-        <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;">
-          <tr>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;background:#FAFAFA;font-weight:600;width:18%;">IITS Username</td>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;">${user.iits_username || '—'}</td>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;background:#FAFAFA;font-weight:600;width:18%;">ADM Username</td>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;">${user.adm_username || '—'}</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;background:#FAFAFA;font-weight:600;">Test ENV</td>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;">${user.test_env || '—'}</td>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;background:#FAFAFA;font-weight:600;">Prod ENV</td>
-            <td style="padding:6px 8px;border:1px solid #E1E1E1;">${user.prod_env || '—'}</td>
-          </tr>
-        </table>
-
-        <div style="margin-top:12px;">
-          <div style="font-size:12px;font-weight:700;color:#363A3B;text-transform:uppercase;letter-spacing:.08em;">Completed steps</div>
-          ${doneHtml}
-        </div>
-      </div>`;
+      <tr>
+        <td>${user.token || '—'}</td>
+        <td>${user.display_name || '—'}</td>
+        <td>${user.email || '—'}</td>
+        <td>${user.iits_username || '—'}</td>
+        <td>${user.adm_username || '—'}</td>
+        <td>${user.test_env || '—'}</td>
+        <td>${user.prod_env || '—'}</td>
+        <td>${pct}%</td>
+        <td>${allDone(user).length}/${STEPS.length}</td>
+        <td>${nextUser ? nextUser.title : '—'}</td>
+        <td>${nextAdmin ? (nextAdmin.adminLabel || nextAdmin.title) : '—'}</td>
+        <td>${doneUserSteps}</td>
+        <td>${doneAdminSteps}</td>
+      </tr>`;
   }).join('');
 
   const html = `
@@ -428,24 +417,28 @@ function exportWizardProgressPdf(sourceUsers) {
     <html>
       <head>
         <meta charset="utf-8" />
-        <title>RTA Wizard Progress Export</title>
+        <title>RTA Wizard Progress Overview</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 24px; color: #363A3B; background: #FFFFFF; }
-          h1 { margin: 0; font-size: 28px; }
-          .sub { margin-top: 6px; color: #656565; font-size: 13px; }
-          .meta { margin: 14px 0 22px; font-size: 12px; color: #656565; }
-          @media print { body { margin: 16px; } }
+          @page { size: landscape; margin: 12mm; }
+          body { font-family: Arial, sans-serif; margin: 0; color: #363A3B; background: #FFFFFF; }
+          h1 { margin: 0; font-size: 24px; }
+          .sub { margin-top: 6px; color: #656565; font-size: 12px; }
+          .meta { margin: 10px 0 14px; font-size: 11px; color: #656565; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 10px; }
+          th, td { border: 1px solid #D4D4D4; padding: 6px 7px; vertical-align: top; word-break: break-word; }
+          th { background: #F2F7FC; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+          tbody tr:nth-child(even) { background: #FAFAFA; }
         </style>
       </head>
       <body>
-        <h1>RTA Wizard Progress</h1>
-        <div class="sub">Export for sharing with RTA</div>
+        <h1>RTA Wizard Progress Overview</h1>
+        <div class="sub">Table export for JPR</div>
         <div class="meta">Generated: ${new Date().toLocaleString()} · Total users: ${safeUsers.length}</div>
-        ${rows || '<div>No users with progress available for export.</div>'}
+        ${rows ? `<table><thead><tr><th>Token</th><th>Name</th><th>Email</th><th>IITS</th><th>ADM</th><th>Test ENV</th><th>Prod ENV</th><th>Progress</th><th>Done</th><th>Next User Step</th><th>Next Admin Step</th><th>Completed User Steps</th><th>Completed Admin Steps</th></tr></thead><tbody>${rows}</tbody></table>` : '<div>No users with progress available for export.</div>'}
       </body>
     </html>
   `;
-  const win = window.open('', '_blank', 'width=1100,height=900');
+  const win = window.open('', '_blank', 'width=1400,height=900');
   if (!win) return;
   win.document.open();
   win.document.write(html);
@@ -484,21 +477,38 @@ function App() {
       setWizardUser(emptyWizardUser());
       return;
     }
+
     const token = normalizeToken(currentUser.token);
     let cancelled = false;
-    API.getWizard(token).then(data => {
-      if (cancelled) return;
-      setWizardUser({
-        ...emptyWizardUser(token, currentUser.name || ''),
-        ...data,
-        token,
-        display_name: (data && data.display_name) || currentUser.name || '',
-      });
-    }).catch(() => {
-      if (cancelled) return;
-      setWizardUser(emptyWizardUser(token, currentUser.name || ''));
-    });
-    return () => { cancelled = true; };
+
+    async function refreshWizard(silent = false) {
+      try {
+        const data = await API.getWizard(token);
+        if (cancelled) return;
+        setWizardUser(prev => ({
+          ...emptyWizardUser(token, currentUser.name || ''),
+          ...prev,
+          ...data,
+          token,
+          display_name: (data && data.display_name) || currentUser.name || '',
+        }));
+        if (silent) {
+          setWizardStatus(s => s.saving ? s : { ...s, message: 'Auto-refreshed' });
+          setTimeout(() => setWizardStatus(s => (s.message === 'Auto-refreshed' ? { ...s, message: '' } : s)), 1200);
+        }
+      } catch {
+        if (cancelled) return;
+        setWizardUser(prev => (prev?.token ? prev : emptyWizardUser(token, currentUser.name || '')));
+      }
+    }
+
+    refreshWizard(false);
+    const poll = setInterval(() => refreshWizard(true), CONFIG.WIZARD_REFRESH_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(poll);
+    };
   }, [currentUser?.token, currentUser?.name]);
 
   useEffect(() => {
@@ -971,7 +981,7 @@ function WizardView({ user, saveWizard, wizardStatus, openStep, setOpenStep, don
             const isNext = nextStep?.id === step.id;
             const open = openStep === step.id;
             return (
-              <div key={step.id} className={`step-card ${step.owner === 'admin' ? 'admin' : ''} ${isNext ? 'next' : ''} ${!unlocked ? 'locked' : ''}`}>
+              <div key={step.id} className={`step-card ${step.owner === 'admin' ? 'admin' : ''} ${done ? 'done' : ''} ${isNext ? 'next' : ''} ${!unlocked ? 'locked' : ''}`} style={done && step.owner === 'admin' ? { opacity: 0.68, background: RS.neutral100, borderColor: RS.neutral300 } : undefined}>
                 <div className={`rail ${done ? 'done' : isNext ? 'next' : ''}`}>{done ? '✓' : step.icon}</div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'start' }}>
@@ -1267,18 +1277,6 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
     return true;
   });
 
-  function renderNextStep(user) {
-    const pending = STEPS.filter(s => s.owner === 'admin' && isUnlocked(user, s) && !getVisibleDone(user, s));
-    if (pending.length === 0) return <div className="small">No pending admin step</div>;
-    const step = pending[0];
-    return (
-      <div>
-        <div><strong>{step.title}</strong></div>
-        <div className="small">{step.adminLabel || step.summary}</div>
-      </div>
-    );
-  }
-
   function renderCompletedSteps(user) {
     const done = completedStepsList(user);
     if (done.length === 0) return <div className="small">No completed steps yet</div>;
@@ -1353,7 +1351,41 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                 </div>
               </div>
 
+              <div className="card progress-card" style={{ boxShadow: 'none', marginBottom: 14, padding: '14px 16px' }}>
+                <div className="hero-row" style={{ marginBottom: 10, paddingBottom: 10 }}>
+                  <div>
+                    <div className="side-card-title" style={{ marginBottom: 0 }}>Pending Admin Tasks <span className="small" style={{ fontWeight: 400 }}>(quick list)</span></div>
+                  </div>
+                </div>
+                {pendingAdminTasks.length === 0 ? (
+                  <div className="small">No pending admin tasks right now.</div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {pendingAdminTasks.slice().sort((a, b) => (a.user.token || '').localeCompare(b.user.token || '')).map(({ user, step }) => {
+                      const done = getVisibleDone(user, step);
+                      return (
+                        <div key={`${user.token}-${step.id}`} style={{ display: 'grid', gridTemplateColumns: '90px minmax(0, 1fr) auto', gap: 10, alignItems: 'center', padding: '10px 12px', border: `1px solid ${RS.neutral200}`, borderRadius: 8, background: RS.neutralWhite }}>
+                          <div className="mono"><strong>{user.token}</strong></div>
+                          <div>
+                            <div style={{ fontWeight: 700 }}>{step.adminLabel || step.title}</div>
+                            <div className="small">{user.display_name || user.name || '—'}</div>
+                          </div>
+                          <button
+                            className="btn btn-secondary"
+                            style={{ width: 'auto', whiteSpace: 'nowrap' }}
+                            onClick={() => toggleAdminStep(user.token, step.id)}
+                          >
+                            Mark complete
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               <div style={{ width: '100%', overflowX: 'hidden', paddingBottom: 4 }}>
+
                 <table className="admin-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                   <thead>
                     <tr>
@@ -1365,8 +1397,7 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                       <th style={{ width: '12%', whiteSpace: 'nowrap' }}>Progress</th>
                       <th style={{ width: '8%', whiteSpace: 'nowrap' }}>Activity</th>
                       <th style={{ width: '24%', whiteSpace: 'nowrap' }}>Completed Steps</th>
-                      <th style={{ width: '16%', whiteSpace: 'nowrap' }}>Next Step</th>
-                      <th style={{ width: '18%', whiteSpace: 'nowrap' }}>Mark Complete</th>
+                      <th style={{ width: '18%', whiteSpace: 'nowrap' }}>Admin Task</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1387,9 +1418,10 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                         </td>
                         <td style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtShortDate(u.updated_at || u.lastActive)}</td>
                         <td title={renderCompletedSteps(u)} style={{ verticalAlign: 'top', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{renderCompletedSteps(u)}</td>
-                        <td title={renderNextStep(u)} style={{ verticalAlign: 'top', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{renderNextStep(u)}</td>
                         <td style={{ verticalAlign: 'top' }}>
-                          {STEPS.filter(s => s.owner === 'admin' && isUnlocked(u, s)).map(s => {
+                          {STEPS.filter(s => s.owner === 'admin' && isUnlocked(u, s)).length === 0 ? (
+                            <div className="small">No admin task</div>
+                          ) : STEPS.filter(s => s.owner === 'admin' && isUnlocked(u, s)).map(s => {
                             const done = getVisibleDone(u, s);
                             return (
                               <button
@@ -1398,10 +1430,10 @@ function AdminView({ admin, setAdmin, doAdminAuth, loadAdminData, toggleAdminSte
                                 style={{
                                   display: 'block', width: '100%', marginBottom: 4, padding: '4px 8px',
                                   fontSize: 11, fontFamily: 'JetBrains Mono, monospace', fontWeight: 600,
-                                  borderRadius: 4, cursor: 'pointer', textAlign: 'left',
-                                  background: done ? '#d1fae5' : '#f0f9ff',
-                                  border: done ? '1px solid #34d399' : '1px solid #93c5fd',
-                                  color: done ? '#065f46' : '#1e40af',
+                                  borderRadius: 4, cursor: 'pointer', textAlign: 'left', opacity: done ? 0.55 : 1,
+                                  background: done ? RS.neutral100 : '#f0f9ff',
+                                  border: done ? `1px solid ${RS.neutral300}` : '1px solid #93c5fd',
+                                  color: done ? RS.neutral700 : '#1e40af',
                                 }}
                               >
                                 {done ? '✓ ' : '○ '}{s.adminLabel || s.title}
