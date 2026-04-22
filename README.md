@@ -47,29 +47,36 @@ See [UPDATE-PIPELINE.md](./UPDATE-PIPELINE.md) for deployment flow, workflow tri
 ```
 
 otp-relay/
-├── main.py                  # FastAPI application
-├── monitor.py               # Phone watcher + WhatsApp alert forwarder
-├── install.sh               # Fresh install from this repo
-├── update.sh                # git pull + sync systemd units + restart
-├── deploy_users.sh          # Hot-reload users.xlsx without restarting
-├── test_otp_relay.py        # End-to-end test suite
-├── .env.template            # Config template — copy to .env and fill in
+├── main.py                        # FastAPI application
+├── monitor.py                     # Phone watcher + WhatsApp alert forwarder
+├── install.sh                     # Fresh install from this repo
+├── update.sh                      # Full repo sync + package refresh + service restart
+├── deploy_users.sh                # Hot-reload users.xlsx without restarting
+├── setup_action-runner.sh         # Optional GitHub Actions runner setup helper
+├── test_otp_relay.py              # End-to-end test suite
+├── .env.template                  # Config template — copy to .env and fill in
 ├── .gitignore
 ├── README.md
 ├── UPDATE-PIPELINE.md
 ├── HELP-DOCS-DEPLOYMENT.md
 ├── frontend/
-│   ├── index.html           # Portal shell — loads React 18 + Babel and mounts the app
-│   ├── style.css            # All styles — INIT / RS design tokens and light theme
-│   └── app.jsx              # React UI logic for OTP, Wizard, Help, and Admin views
+│   ├── index.html                 # Portal shell
+│   ├── style.css                  # App styles
+│   ├── app.jsx                    # React UI logic for OTP, Wizard, Help, and Admin views
+│   └── help/                      # Generated Help Docs output
 ├── nginx/
-│   └── otp-relay.conf       # nginx reverse proxy config
+│   └── otp-relay.conf.template    # nginx reverse proxy template rendered during install/deploy
 ├── scripts/
-│   └── generate_sample_users.py
-|
+│   ├── build_help_docs.py         # Builds frontend/help from docs/help
+│   ├── deploy_application_code.py # Incremental backend deploy helper
+│   ├── deploy_portal_ui.py        # Incremental frontend deploy helper
+│   ├── deploy_server_config.py    # Incremental server-config deploy helper
+│   └── generate_sample_users.py   # Optional sample user generator
+├── docs/
+│   └── help/                      # Help Docs markdown source + assets
 └── systemd/
-    ├── otp-relay.service    # Main app systemd unit
-    └── otp-monitor.service  # Monitor systemd unit
+    ├── otp-relay.service          # Main app systemd unit
+    └── otp-monitor.service        # Monitor systemd unit
 ```
 
 > `.env`, `venv/`, and `data/` are intentionally excluded from git.
@@ -83,7 +90,7 @@ otp-relay/
 | Server hostname | `srvotp26.init-db.lan` |
 | Portal URL | `https://srvotp26.init-db.lan` |
 | Service user | `otprelay` (system account, no login) |
-| Monitor user | `root` (required for ARP raw socket access) |
+| Monitor user | `root` (kept as root because ARP probing requires it) |
 | App directory | `/opt/otp-relay/` |
 | Data directory | `/opt/otp-relay/data/` |
 | Audit log | `/opt/otp-relay/data/audit.log` |
@@ -169,12 +176,31 @@ Get it from:
 
 ```bash
 sudo bash /opt/otp-relay/setup_action-runner.sh <RUNNER_TOKEN>
+```
+
+The script will:
+
+- ask you to choose the platform (`ARM64` or `X64`)
+- download the correct GitHub Actions runner package
+- configure the runner for this repo
+- install the runner as a system service
+- start the runner automatically
 
 After running the installer, disable the default nginx site which would otherwise interfere:
 
 ```bash
 sudo rm /etc/nginx/sites-enabled/default
 sudo systemctl reload nginx
+```
+
+### Manual Help Docs build (only if needed)
+
+Help Docs are normally deployed automatically by the GitHub Actions workflow.  
+If you ever need to build them manually on the server, use the app venv Python, not plain `python3`:
+
+```bash
+cd /opt/otp-relay
+./venv/bin/python scripts/build_help_docs.py
 ```
 
 ### After running the installer
@@ -209,6 +235,20 @@ sudo systemctl start otp-monitor
 sudo systemctl status otp-relay otp-monitor
 ```
 
+### Post-install verification
+
+Run these checks after a fresh install:
+
+```bash
+sudo systemctl status otp-relay --no-pager
+sudo systemctl status otp-monitor --no-pager
+sudo nginx -t
+cd /opt/otp-relay
+./venv/bin/python -c "import bcrypt; print('bcrypt OK')"
+./venv/bin/python -c "import markdown, yaml; print('help docs deps OK')"
+ls -l /opt/otp-relay/data
+```
+
 Deploy the user list (place `otp-relay-users.xlsx` in your home directory first):
 
 ```bash
@@ -220,9 +260,13 @@ sudo bash /opt/otp-relay/deploy_users.sh
 ## Updating
 
 ```bash
-sudo bash /opt/otp-relay/update.sh            # pull latest + sync units + restart both services
-sudo bash /opt/otp-relay/update.sh --no-restart  # pull only
+sudo bash /opt/otp-relay/update.sh               # full sync + package refresh + restart both services
+sudo bash /opt/otp-relay/update.sh --no-restart  # full sync without restart
 ```
+
+> **Warning**
+> `update.sh` does a hard reset of `/opt/otp-relay` to `origin/main`.
+> Do not use it if you have uncommitted local changes in the live repo that you need to keep.
 
 `update.sh` automatically detects changes to systemd unit files and re-copies them to `/etc/systemd/system/`, so unit changes deploy without manual steps.
 
