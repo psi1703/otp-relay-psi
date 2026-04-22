@@ -61,7 +61,7 @@ ok "data/ directory ready"
 section "4/7  Python virtual environment"
 if [[ ! -f "$INSTALL_DIR/venv/bin/uvicorn" ]]; then
   python3.12 -m venv "$INSTALL_DIR/venv"
-  "$INSTALL_DIR/venv/bin/pip" install -q fastapi uvicorn openpyxl python-dotenv requests
+  "$INSTALL_DIR/venv/bin/pip" install -q fastapi uvicorn openpyxl python-dotenv requests bcrypt markdown pyyaml
   ok "venv created and packages installed"
 else
   "$INSTALL_DIR/venv/bin/pip" install -q --upgrade fastapi uvicorn openpyxl python-dotenv requests bcrypt markdown pyyaml
