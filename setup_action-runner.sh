@@ -3,26 +3,21 @@
 # setup_action-runner.sh — Install/configure GitHub Actions self-hosted runner
 #
 # Usage:
-#   sudo bash setup_action-runner.sh <RUNNER_TOKEN> [arm64|x64]
+#   sudo bash setup_action-runner.sh <RUNNER_TOKEN> [arm64|x64] [RUNNER_NAME]
+#   sudo bash setup_action-runner.sh <RUNNER_TOKEN> [RUNNER_NAME]
 #
-# Example:
+# Examples:
 #   sudo bash setup_action-runner.sh ABC123...
 #   sudo bash setup_action-runner.sh ABC123... arm64
+#   sudo bash setup_action-runner.sh ABC123... runner-pi
+#   sudo bash setup_action-runner.sh ABC123... arm64 runner-pi
 #
-# Before running:
-#   1. Open your repo on GitHub:
-#        psi1703/otp-relay-psi
-#   2. Go to:
-#        Settings -> Actions -> Runners
-#   3. Click:
-#        New self-hosted runner
-#   4. Choose the correct platform for your server
-#   5. Copy the temporary registration token GitHub shows
-#   6. Run this script with that token
-#
-# Important:
-#   - The token is temporary and expires quickly
-#   - If this script says the token is invalid or expired, generate a fresh one
+# Notes:
+#   - If no runner name is provided, the script prompts for one and defaults to
+#     the host shortname.
+#   - The bundled GitHub dependency helper is skipped by default to avoid noisy
+#     legacy-package probe errors on modern Debian/Ubuntu systems. Set
+#     RUN_BUNDLED_HELPER=1 to run it explicitly.
 # =============================================================================
 
 set -euo pipefail
@@ -36,17 +31,62 @@ warn()    { echo -e "  ${YELLOW}⚠${RESET}  $*"; }
 fail()    { echo -e "  ${RED}✗${RESET}  $*"; }
 section() { echo -e "\n${BOLD}$*${RESET}\n$(printf '─%.0s' {1..54})"; }
 
-[[ "${EUID}" -ne 0 ]] && { fail "Run with sudo: sudo bash $0 <RUNNER_TOKEN> [arm64|x64]"; exit 1; }
-[[ $# -lt 1 ]] && { fail "Missing runner token. Usage: sudo bash $0 <RUNNER_TOKEN> [arm64|x64]"; exit 1; }
+usage() {
+  cat <<EOF
+Usage:
+  sudo bash $0 <RUNNER_TOKEN> [arm64|x64] [RUNNER_NAME]
+  sudo bash $0 <RUNNER_TOKEN> [RUNNER_NAME]
+
+Examples:
+  sudo bash $0 ABC123...
+  sudo bash $0 ABC123... arm64
+  sudo bash $0 ABC123... runner-pi
+  sudo bash $0 ABC123... arm64 runner-pi
+EOF
+}
+
+[[ "${EUID}" -ne 0 ]] && { fail "Run with sudo."; usage; exit 1; }
+[[ $# -lt 1 ]] && { fail "Missing runner token."; usage; exit 1; }
 
 RUNNER_TOKEN="$1"
-ARCH_OVERRIDE="${2:-}"
+ARG2="${2:-}"
+ARG3="${3:-}"
+ARCH_OVERRIDE=""
+RUNNER_NAME_INPUT=""
+RUN_BUNDLED_HELPER="${RUN_BUNDLED_HELPER:-0}"
+
+parse_optional_args() {
+  local value
+  for value in "${ARG2}" "${ARG3}"; do
+    [[ -n "${value}" ]] || continue
+    case "${value}" in
+      arm64|aarch64|x64|amd64|x86_64)
+        if [[ -n "${ARCH_OVERRIDE}" ]]; then
+          fail "Architecture provided more than once."
+          usage
+          exit 1
+        fi
+        ARCH_OVERRIDE="${value}"
+        ;;
+      *)
+        if [[ -n "${RUNNER_NAME_INPUT}" ]]; then
+          fail "Runner name provided more than once."
+          usage
+          exit 1
+        fi
+        RUNNER_NAME_INPUT="${value}"
+        ;;
+    esac
+  done
+}
+
+parse_optional_args
 
 # Detect real non-root user who launched sudo
 RUNNER_USER="${SUDO_USER:-}"
 if [[ -z "${RUNNER_USER}" || "${RUNNER_USER}" == "root" ]]; then
   fail "Could not detect the normal server user automatically."
-  fail "Run this as: sudo bash $0 <RUNNER_TOKEN> [arm64|x64]"
+  fail "Run this as: sudo bash $0 <RUNNER_TOKEN> [arm64|x64] [RUNNER_NAME]"
   fail "Do not run it from a root login shell."
   exit 1
 fi
@@ -63,6 +103,10 @@ RUNNER_NAME="${HOST_SHORT}"
 OS_ID=""
 OS_VERSION_ID=""
 OS_PRETTY_NAME=""
+RUNNER_ARCH=""
+LABEL_ARCH=""
+RUNNER_LABELS=""
+SERVICE_NAME=""
 
 pkg_exists() {
   apt-cache show "$1" >/dev/null 2>&1
@@ -73,11 +117,10 @@ install_first_available() {
   for pkg in "$@"; do
     if pkg_exists "$pkg"; then
       info "Installing package: $pkg"
-      DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"
+      DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$pkg"
       return 0
     fi
   done
-
   warn "None of these packages were available: $*"
   return 1
 }
@@ -103,14 +146,10 @@ choose_arch() {
       arm64|aarch64)
         RUNNER_ARCH="arm64"
         LABEL_ARCH="ARM64"
-        ok "Using architecture override: ${RUNNER_ARCH}"
-        return 0
         ;;
       x64|amd64|x86_64)
         RUNNER_ARCH="x64"
         LABEL_ARCH="X64"
-        ok "Using architecture override: ${RUNNER_ARCH}"
-        return 0
         ;;
       *)
         fail "Unsupported architecture override: ${ARCH_OVERRIDE}"
@@ -118,6 +157,8 @@ choose_arch() {
         exit 1
         ;;
     esac
+    ok "Using architecture override: ${RUNNER_ARCH}"
+    return 0
   fi
 
   case "${detected}" in
@@ -131,7 +172,7 @@ choose_arch() {
       ;;
     *)
       fail "Unsupported machine architecture: ${detected}"
-      fail "Run with explicit override if needed: sudo bash $0 <RUNNER_TOKEN> [arm64|x64]"
+      fail "Run with explicit override if needed: sudo bash $0 <RUNNER_TOKEN> [arm64|x64] [RUNNER_NAME]"
       exit 1
       ;;
   esac
@@ -139,29 +180,48 @@ choose_arch() {
   ok "Detected machine architecture: ${detected} -> ${RUNNER_ARCH}"
 }
 
+choose_runner_name() {
+  local candidate=""
+  local default_name="${HOST_SHORT}"
+
+  if [[ -n "${RUNNER_NAME_INPUT}" ]]; then
+    candidate="${RUNNER_NAME_INPUT}"
+  elif [[ -t 0 ]]; then
+    read -r -p "Enter runner name [${default_name}]: " candidate
+  fi
+
+  [[ -n "${candidate}" ]] || candidate="${default_name}"
+
+  while true; do
+    if [[ "${candidate}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+      RUNNER_NAME="${candidate}"
+      ok "Runner name: ${RUNNER_NAME}"
+      return 0
+    fi
+
+    warn "Runner name can only contain letters, numbers, dots, underscores, and hyphens."
+    if [[ -t 0 ]]; then
+      read -r -p "Enter runner name [${default_name}]: " candidate
+      [[ -n "${candidate}" ]] || candidate="${default_name}"
+    else
+      fail "Invalid runner name: ${candidate}"
+      exit 1
+    fi
+  done
+}
+
 set_runner_labels() {
-  local os_label="linux"
-
-  case "${OS_ID}" in
-    ubuntu)
-      os_label="ubuntu-${OS_VERSION_ID}"
-      ;;
-    debian|raspbian)
-      os_label="${OS_ID}-${OS_VERSION_ID}"
-      ;;
-  esac
-
   RUNNER_LABELS="self-hosted,Linux,${LABEL_ARCH}"
   ok "Runner labels: ${RUNNER_LABELS}"
 }
 
 install_dependencies() {
-  section "4/7  Install runner dependencies"
+  section "5/8  Install runner dependencies"
 
   export DEBIAN_FRONTEND=noninteractive
-  apt-get update
+  apt-get update -qq
 
-  apt-get install -y \
+  apt-get install -y -qq \
     curl \
     tar \
     jq \
@@ -174,6 +234,7 @@ install_dependencies() {
       install_first_available libssl3t64 libssl3 libssl1.1 || true
       install_first_available \
         libicu76 \
+        libicu75 \
         libicu74 \
         libicu72 \
         libicu71 \
@@ -205,7 +266,7 @@ configure_needrestart() {
 }
 
 download_and_extract_runner() {
-  section "5/7  Download and extract runner"
+  section "6/8  Download and extract runner"
 
   mkdir -p "${RUNNER_DIR}"
   chown -R "${RUNNER_USER}:${RUNNER_USER}" "${RUNNER_DIR}"
@@ -230,11 +291,17 @@ EOF
 }
 
 configure_runner() {
-  section "6/7  Configure runner"
+  section "7/8  Configure runner"
 
   if [[ -f "${RUNNER_DIR}/.runner" ]]; then
+    local existing_name=""
+    existing_name="$(sudo -u "${RUNNER_USER}" jq -r '.agentName // empty' "${RUNNER_DIR}/.runner" 2>/dev/null || true)"
     warn "Runner already configured at ${RUNNER_DIR}"
-    warn "Skipping config.sh because .runner already exists."
+    [[ -n "${existing_name}" ]] && warn "Existing runner name: ${existing_name}"
+    if [[ -n "${existing_name}" && "${existing_name}" != "${RUNNER_NAME}" ]]; then
+      warn "Requested runner name '${RUNNER_NAME}' was not applied because the runner is already configured."
+      warn "Remove and reconfigure the runner if you want to rename it."
+    fi
     return 0
   fi
 
@@ -253,41 +320,74 @@ EOF
   ok "Runner configured"
 }
 
+maybe_run_bundled_helper() {
+  cd "${RUNNER_DIR}"
+
+  if [[ "${RUN_BUNDLED_HELPER}" == "1" ]]; then
+    if [[ -x "./bin/installdependencies.sh" ]]; then
+      warn "RUN_BUNDLED_HELPER=1 set — running bundled dependency helper"
+      ./bin/installdependencies.sh
+    fi
+  else
+    info "Skipping bundled dependency helper to avoid legacy package probe noise"
+  fi
+}
+
 install_and_start_service() {
-  section "7/7  Install and start service"
+  section "8/8  Install and start service"
 
   cd "${RUNNER_DIR}"
 
-  if [[ -x "./bin/installdependencies.sh" ]]; then
-    warn "Running bundled runner dependency helper (non-fatal if it probes missing legacy packages)"
-    ./bin/installdependencies.sh || true
+  maybe_run_bundled_helper
+
+  [[ -x "./svc.sh" ]] || { fail "svc.sh not found in ${RUNNER_DIR}"; exit 1; }
+
+  if [[ -f "${RUNNER_DIR}/.service" ]]; then
+    SERVICE_NAME="$(tr -d '\r\n' < "${RUNNER_DIR}/.service")"
   fi
 
-  if [[ -x "./svc.sh" ]]; then
-    ./svc.sh install "${RUNNER_USER}"
-    ./svc.sh start
-    ./svc.sh status
-    ok "Runner service installed and started"
+  if [[ -n "${SERVICE_NAME}" ]] && systemctl list-unit-files --type=service | awk '{print $1}' | grep -Fxq "${SERVICE_NAME}"; then
+    info "Runner service already installed: ${SERVICE_NAME}"
   else
-    fail "svc.sh not found in ${RUNNER_DIR}"
-    exit 1
+    ./svc.sh install "${RUNNER_USER}"
+    if [[ -f "${RUNNER_DIR}/.service" ]]; then
+      SERVICE_NAME="$(tr -d '\r\n' < "${RUNNER_DIR}/.service")"
+    fi
+  fi
+
+  ./svc.sh start
+  sleep 2
+
+  if [[ -n "${SERVICE_NAME}" ]]; then
+    if systemctl is-active --quiet "${SERVICE_NAME}"; then
+      ok "Runner service is active: ${SERVICE_NAME}"
+    else
+      fail "Runner service failed to start: ${SERVICE_NAME}"
+      systemctl --no-pager --full status "${SERVICE_NAME}" || true
+      exit 1
+    fi
+  else
+    ok "Runner service installed and started"
   fi
 }
 
 echo -e "\n${BOLD}GitHub Actions Runner Setup${RESET}"
 echo -e "${DIM}Repo: ${REPO_URL}${RESET}\n"
 
-section "1/7  Validate runner user"
+section "1/8  Validate runner user"
 id "${RUNNER_USER}" >/dev/null 2>&1 || { fail "User '${RUNNER_USER}' does not exist"; exit 1; }
 ok "Detected runner user: ${RUNNER_USER}"
 ok "Runner home: ${RUNNER_HOME}"
 
-section "2/7  Detect OS"
+section "2/8  Detect OS"
 detect_os
 
-section "3/7  Detect runner platform"
+section "3/8  Detect runner platform"
 choose_arch
 set_runner_labels
+
+section "4/8  Runner identity"
+choose_runner_name
 
 install_dependencies
 configure_needrestart
@@ -299,4 +399,7 @@ echo ""
 ok "Runner setup complete"
 echo -e "  ${DIM}Runner name: ${RUNNER_NAME}${RESET}"
 echo -e "  ${DIM}Labels: ${RUNNER_LABELS}${RESET}"
+if [[ -n "${SERVICE_NAME}" ]]; then
+  echo -e "  ${DIM}Service: ${SERVICE_NAME}${RESET}"
+fi
 echo -e "  ${DIM}Check GitHub -> Settings -> Actions -> Runners to confirm it is online.${RESET}"
