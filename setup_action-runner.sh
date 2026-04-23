@@ -10,7 +10,7 @@
 #
 # Before running:
 #   1. Open your repo on GitHub:
-#        psi1703/otp-relay-psi
+#        i.e. psi1703/otp-relay-psi
 #   2. Go to:
 #        Settings -> Actions -> Runners
 #   3. Click:
@@ -38,9 +38,20 @@ section() { echo -e "\n${BOLD}$*${RESET}\n$(printf '─%.0s' {1..54})"; }
 [[ "$EUID" -ne 0 ]] && { fail "Run with sudo: sudo bash $0 <RUNNER_TOKEN>"; exit 1; }
 [[ $# -lt 1 ]] && { fail "Missing runner token. Usage: sudo bash $0 <RUNNER_TOKEN>"; exit 1; }
 
+# Detect real non-root user who launched 
 RUNNER_TOKEN="$1"
-RUNNER_USER="initbox"
-RUNNER_DIR="/home/${RUNNER_USER}/actions-runner"
+RUNNER_USER="${SUDO_USER:-}"
+if [[ -z "${RUNNER_USER}" || "${RUNNER_USER}" == "root" ]]; then
+  fail "Could not detect the normal server user automatically."
+  fail "Run this as: sudo bash $0 <RUNNER_TOKEN>"
+  fail "Do not run it from a root login shell."
+  exit 1
+fi
+
+RUNNER_HOME="$(getent passwd "${RUNNER_USER}" | cut -d: -f6)"
+[[ -z "${RUNNER_HOME}" ]] && { fail "Could not determine home directory for ${RUNNER_USER}"; exit 1; }
+
+RUNNER_DIR="${RUNNER_HOME}/actions-runner"
 REPO_URL="https://github.com/psi1703/otp-relay-psi"
 RUNNER_VERSION="2.325.0"
 HOST_SHORT="$(hostname -s)"
@@ -84,7 +95,8 @@ echo -e "${DIM}Repo: ${REPO_URL}${RESET}\n"
 
 section "1/6  Validate runner user"
 id "${RUNNER_USER}" >/dev/null 2>&1 || fail "User '${RUNNER_USER}' does not exist"
-ok "Runner user exists: ${RUNNER_USER}"
+ok "Detected runner user: ${RUNNER_USER}"
+ok "Runner home: ${RUNNER_HOME}"
 
 section "2/6  Select runner platform"
 choose_arch
