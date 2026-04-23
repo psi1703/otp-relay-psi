@@ -1,0 +1,63 @@
+name: Sync to SCH portal branch
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: sync-sch-portal
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Checkout manager repo branch
+        uses: actions/checkout@v6
+        with:
+          repository: SCH-INIT/otp-relay
+          ref: portal
+          token: ${{ secrets.SYNC_PAT }}
+          path: manager-repo
+          fetch-depth: 0
+
+      - name: Copy source into SCH repo
+        run: |
+          rsync -a --delete \
+            --exclude '.git' \
+            --exclude 'manager-repo' \
+            --exclude '.github/workflows/sync-portal.yml' \
+            ./ manager-repo/
+
+      - name: Commit changes if any
+        run: |
+          cd manager-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No staged changes"
+            exit 0
+          fi
+
+          git commit -m "Sync from psi1703/otp-relay-psi main"
+
+      - name: Push to SCH portal branch
+        run: |
+          cd manager-repo
+          git push origin HEAD:portal
