@@ -388,10 +388,7 @@ function exportWizardProgressPdf(sourceUsers) {
     .sort((a, b) => (a.token || '').localeCompare(b.token || ''));
 
   const rows = safeUsers.map(user => {
-    const doneUserSteps = STEPS.filter(step => step.owner === 'user' && getVisibleDone(user, step)).map(step => step.title).join(', ') || '—';
-    const doneAdminSteps = STEPS.filter(step => step.owner === 'admin' && getVisibleDone(user, step)).map(step => step.adminLabel || step.title).join(', ') || '—';
     const nextUser = STEPS.find(step => step.owner === 'user' && isUnlocked(user, step) && !getVisibleDone(user, step));
-    const nextAdmin = STEPS.find(step => step.owner === 'admin' && isUnlocked(user, step) && !getVisibleDone(user, step));
     const pct = Math.round((allDone(user).length / STEPS.length) * 100);
 
     return `
@@ -406,9 +403,6 @@ function exportWizardProgressPdf(sourceUsers) {
         <td>${pct}%</td>
         <td>${allDone(user).length}/${STEPS.length}</td>
         <td>${nextUser ? nextUser.title : '—'}</td>
-        <td>${nextAdmin ? (nextAdmin.adminLabel || nextAdmin.title) : '—'}</td>
-        <td>${doneUserSteps}</td>
-        <td>${doneAdminSteps}</td>
       </tr>`;
   }).join('');
 
@@ -434,7 +428,7 @@ function exportWizardProgressPdf(sourceUsers) {
         <h1>RTA Wizard Progress Overview</h1>
         <div class="sub">Table export for JPR</div>
         <div class="meta">Generated: ${new Date().toLocaleString()} · Total users: ${safeUsers.length}</div>
-        ${rows ? `<table><thead><tr><th>Token</th><th>Name</th><th>Email</th><th>IITS</th><th>ADM</th><th>Test ENV</th><th>Prod ENV</th><th>Progress</th><th>Done</th><th>Next User Step</th><th>Next Admin Step</th><th>Completed User Steps</th><th>Completed Admin Steps</th></tr></thead><tbody>${rows}</tbody></table>` : '<div>No users with progress available for export.</div>'}
+        ${rows ? `<table><thead><tr><th>Token</th><th>Name</th><th>Email</th><th>IITS</th><th>ADM</th><th>Test ENV</th><th>Prod ENV</th><th>Progress</th><th>Done</th><th>Next User Step</th></tr></thead><tbody>${rows}</tbody></table>` : '<div>No users with progress available for export.</div>'}
       </body>
     </html>
   `;
