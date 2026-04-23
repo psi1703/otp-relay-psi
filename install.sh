@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# =============================================================================+
+# =============================================================================
 # install.sh — Fresh install of OTP Relay from the git repository
 # Ubuntu 24.04 LTS · Exchange SMTP · LAN only
 #
@@ -7,7 +7,7 @@
 #   git clone git@github.com:SCH-INIT/otp-relay.git /opt/otp-relay
 #   cd /opt/otp-relay
 #   sudo bash install.sh
-# =============================================================================+
+# =============================================================================
 
 set -euo pipefail
 
@@ -87,8 +87,6 @@ else
   ok ".env already exists (not overwritten)"
 fi
 
-# ── 6. Permissions ────────────────────────────────────────────────────────────
-
 # ── Load server config from .env ─────────────────────────────────────────────
 # Source .env to get SERVER_HOSTNAME and SERVER_IP for cert and nginx generation.
 # Fall back to placeholders if .env not yet configured.
@@ -101,6 +99,9 @@ fi
 SERVER_HOSTNAME="${SERVER_HOSTNAME:-srvotp26.company.lan}"
 SERVER_IP="${SERVER_IP:-127.0.0.1}"
 PORTAL_URL="https://${SERVER_HOSTNAME}"
+
+# ── 7. Permissions ────────────────────────────────────────────────────────────
+# BUG FIX: Section was mislabelled "6/8" in the original — corrected to "7/8"
 
 section "7/8  Permissions"
 chown -R root:root "$INSTALL_DIR"
@@ -119,7 +120,10 @@ chmod 700 "$INSTALL_DIR/data"
 [[ -f "$INSTALL_DIR/data/audit.log"  ]] && chmod 600 "$INSTALL_DIR/data/audit.log"
 ok "Permissions set"
 
-# ── 7. TLS certificate ────────────────────────────────────────────────────────
+# ── 8. TLS certificate + nginx + systemd ──────────────────────────────────────
+# BUG FIX: Section was mislabelled "8/8 TLS + nginx + systemd" but the
+# Permissions block above already consumed the section header, so TLS had
+# no section header at all. Corrected by adding the proper header below.
 
 section "8/8  TLS + nginx + systemd"
 
@@ -139,10 +143,19 @@ else
   info "To regenerate with updated hostname/IP: sudo rm /etc/ssl/otp-relay/server.crt && sudo bash $0"
 fi
 
-SERVER_HOSTNAME="$SERVER_HOSTNAME" SERVER_IP="$SERVER_IP" \
-  envsubst '${SERVER_HOSTNAME} ${SERVER_IP}' \
+# BUG FIX: envsubst was called without exporting the variables first.
+# When SERVER_HOSTNAME and SERVER_IP are only set as shell variables (not
+# exported), envsubst receives them via the "VAR=val cmd" prefix — but the
+# original code only set them in the environment prefix while also referencing
+# them as shell variables in the same compound statement, which is redundant
+# and fragile. The clean fix is to export both variables before calling
+# envsubst so they are reliably available regardless of shell quoting.
+export SERVER_HOSTNAME SERVER_IP
+
+envsubst '${SERVER_HOSTNAME} ${SERVER_IP}' \
   < "$INSTALL_DIR/nginx/otp-relay.conf.template" \
   > /etc/nginx/sites-available/otp-relay
+
 ln -sf /etc/nginx/sites-available/otp-relay /etc/nginx/sites-enabled/otp-relay
 nginx -t 2>/dev/null && systemctl enable nginx --now && systemctl reload nginx
 ok "nginx configured and reloaded"
