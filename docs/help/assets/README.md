@@ -1,32 +1,23 @@
-# Help doc assets
+# Help and Wizard Assets
 
-Place screenshots and images for the help pages in this folder.
+Store source screenshots and images for the Help Docs and RTA Wizard here.
 
-Suggested filenames:
+The build script copies this directory to:
 
-- otp-claim-slot.png
-- otp-waiting-room.png
-- otp-code-visible.png
-- oracle-auth-qr.png
-- vpn-search.png
-- vpn-apply.png
-- vpn-new-access.png
-- vpn-form.png
-- vpn-add-rdp.png
-- vpn-add-pam.png
-- vpn-add-ssh.png
-- ivanti-add-connection.png
-- renew-vpn-search.png
-- renew-vpn-apply.png
-- renew-vpn-extension.png
-- renew-vpn-form.png
-- winscp-login.png
-- pam-search-account.png
-- pam-psm-rdp.png
-- helpdesk-section.png
-- helpdesk-form.png
-- terminal-browser-login.png
-- terminal-browser-rdp-login.png
-- terminal-browser-desktop.png
-- terminal-rdp-client.png
-- terminal-xorg-login.png
+```text
+frontend/help/assets/
+```
+
+The live portal serves the copied files from:
+
+```text
+/help/assets/<filename>
+```
+
+Reference images from markdown like this:
+
+```md
+![Description](assets/example.png)
+```
+
+Do not manually edit generated copies under `frontend/help/assets/` or `/opt/otp-relay/frontend/help/assets/`.

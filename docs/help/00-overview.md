@@ -3,11 +3,14 @@ title: RTA Servers Access Guide
 section: Overview
 order: 0
 slug: overview
+wizard: false
 ---
 
 # RTA Servers Access Guide
 
-This section provides a single entry point for all RTA access topics.
+This page is a reference index for maintainers and fallback Help pages.
+
+The normal user-facing flow is the **RTA Wizard** inside the OTP Relay portal. The wizard floating guide is generated from explicit `<!-- wizard:step_id -->` blocks in the topic markdown files under `docs/help/`.
 
 ## Topics
 
@@ -23,17 +26,6 @@ This section provides a single entry point for all RTA access topics.
 - Terminal Server access guide
 - Important notes and tips
 
-## Recommended reading order for new users
+## Maintainer note
 
-1. New user onboarding
-2. Reset RTA password
-3. Configure Oracle Authenticator
-4. Request RDP / SFTP / PAM access
-5. Install RTA VPN
-6. Install WinSCP
-7. Use PAM
-8. Notes and tips
-
-## Maintainers
-
-Keep this page brief. Put detailed steps in the topic pages and keep screenshots in `docs/help/assets/`.
+This overview page is marked `wizard: false`, so it is not shown to portal users in the wizard overlay.
