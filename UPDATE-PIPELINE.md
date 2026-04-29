@@ -48,7 +48,7 @@ The GitHub repo stores:
 - deployment workflows under `.github/workflows/`
 - deployment scripts under `scripts/`
 
-## 2.2 GitHub Actions runner on the Pi
+## 2.2 GitHub Actions runner on the server
 The self-hosted runner:
 
 - checks out the repo into its temporary workspace
