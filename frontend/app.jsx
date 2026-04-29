@@ -44,10 +44,17 @@ const STEPS = [
     details: [
       { type: 'info', text: 'Complete the official RTA Access Request form and attach the supporting documents.' },
       { type: 'list', title: 'What to do', items: [
-        'Fill the latest access request form.',
+        'Fill the yellow boxes in the RTA new-user access request form.',
         'Sign the document and save it as PDF.',
         'Email it to Jathin and copy Amer + Christian if needed.',
+        'Attach the completed form and add your signature or name at the end of the email.',
         'Ajith must also send the employee ID copy in PDF to Mustafa.'
+      ]},
+      { type: 'list', title: 'After submission', items: [
+        'Jathin applies for the RTA account.',
+        'Jathin shares the IITS username once the account is ready.',
+        'Jathin informs Amer so the ADM and PAM onboarding path can continue.',
+        'Full onboarding can take roughly 2-3 weeks.'
       ]},
       { type: 'links', title: 'Useful links', items: [
         { label: 'RTA Access Requests (SharePoint)', href: 'https://initse.sharepoint.com/:f:/r/sites/RTAinternal/Shared%20Documents/RTA%20Documents/PAM/RTA%20Access%20Requests' },
@@ -60,7 +67,12 @@ const STEPS = [
     adminLabel: 'Jathin creates the IITS account',
     summary: 'Jathin applies for your RTA account in the RTA system and shares the IITS username with you.',
     details: [
-      { type: 'info', text: 'Jathin applies for your RTA account and notifies you once the IITS username is ready.' }
+      { type: 'info', text: 'Jathin applies for your RTA account and notifies you once the IITS username is ready.' },
+      { type: 'list', title: 'What you should expect', items: [
+        'No OTP action is needed during this admin-owned step.',
+        'Wait for the IITS username in the format IITS_*USERNAME*.',
+        'Save the username in the wizard when it arrives so later steps stay clear.'
+      ]}
     ]
   },
   {
@@ -73,21 +85,24 @@ const STEPS = [
         'ITD approval: Siby.',
         'SMD approval: Ahmed Jarrah.',
         'After approvals, PAM support is emailed with the chain attached.'
-      ]}
+      ]},
+      { type: 'info', text: 'This is an admin-owned step. Users only need to wait until Amer confirms the ADM account and PAM onboarding status.' }
     ]
   },
   {
     id: 'save_iits', title: 'Save Your IITS Username', owner: 'user', icon: '👤', time: '2 min', gate: ['account_creation'],
     summary: 'Once Jathin sends you the IITS username, save it here for later use.',
     details: [
-      { type: 'info', text: 'You will use the IITS account for VPN login, password resets, and OTP-related RTA access.' }
+      { type: 'info', text: 'You will use the IITS account for VPN login, password resets, Oracle Authenticator, VPN, and OTP-related RTA access.' },
+      { type: 'warn', text: 'Save only the username here. Do not store passwords in the portal.' }
     ]
   },
   {
     id: 'save_adm', title: 'Save Your ADM Username', owner: 'user', icon: '🗂️', time: '2 min', gate: ['adm_request'],
     summary: 'Once Amer confirms the ADM account, save it here for PAM and server access workflows.',
     details: [
-      { type: 'info', text: 'ADM is used for PAM and privileged access workflows inside the RTA environment.' }
+      { type: 'info', text: 'ADM is used for PAM and privileged access workflows inside the RTA environment.' },
+      { type: 'warn', text: 'Save only the username here. Do not store passwords in the portal.' }
     ]
   },
   {
@@ -102,9 +117,18 @@ const STEPS = [
         'Enter the OTP from the portal and complete the reset immediately.'
       ]},
       { type: 'list', title: 'Terminal server when outside UAE', items: [
-        'Browser: open https://srvterminal.init-db.lan and log in.',
-        'Windows RDP: connect to 172.31.10.82 or srvterminal.',
+        'Browser: open https://srvterminal.init-db.lan and continue past the browser warning if needed.',
+        'First browser login uses the local terminal account: admin / adminINIT+971.',
+        'After redirect, enter your domain credentials such as INIT\\ABC.',
+        'Windows RDP alternative: connect to 172.31.10.82 or srvterminal and use the Xorg session.',
         'Open the RTA reset link inside that remote session.'
+      ]},
+      { type: 'list', title: 'Password rules', items: [
+        'Use more than 10 characters.',
+        'Include at least one number, one uppercase letter, and one special character.',
+        'Do not include first name, last name, employee ID, month names, weekdays, countries, or obvious words.',
+        'Avoid sequences like 123, 456, abc, xyz and repeated patterns like 111 or aaa.',
+        'Do not reuse the last three passwords.'
       ]},
       { type: 'warn', text: 'Passwords expire every 90 days. No automatic reminder is sent by RTA.' }
     ]
@@ -114,41 +138,85 @@ const STEPS = [
     summary: 'Register Oracle Authenticator for TOTP and verify it works for both IITS and ADM flows.',
     details: [
       { type: 'list', title: 'What to do', items: [
-        'Install Oracle Authenticator on your phone.',
-        'Scan the QR code when prompted during setup.',
-        'Verify that a 6-digit TOTP is generated correctly.'
-      ]}
+        'Launch Chrome and open the Oracle Authenticator setup link.',
+        'Enter your RTA username and password.',
+        'Open Oracle Authenticator on your phone and tap the + icon.',
+        'Scan the QR code shown by the RTA setup page.',
+        'Enter the 6-digit code and click Sign In.',
+        'Keep Oracle Authenticator available before attempting VPN or PAM access.'
+      ]},
+      { type: 'info', text: 'If the setup page shows an error immediately after Sign In but the authenticator code is already registered, continue with the guide unless access testing fails.' }
     ]
   },
   {
     id: 'vpn_request', title: 'Request VPN / PAM / SFTP Access', owner: 'user', icon: '🌐', time: '20 min', gate: ['oracle_auth'], expiryKey: 'vpn_date',
     summary: 'Submit the VPN request in the RTA Automation portal and include the needed applications and risk IDs.',
     details: [
-      { type: 'kv', title: 'Applications to request', items: [
-        ['RDP', '10.11.174.39 | Risk ID as per guide'],
-        ['PAM', '10.11.174.38'],
-        ['SSH/SFTP', '10.11.174.40:122 | Risk ID as per guide']
+      { type: 'list', title: 'Portal path', items: [
+        'Log in to the RTA Automation Portal.',
+        'Search for VPN.',
+        'Click Apply under VPN Access Request.',
+        'Choose New VPN Access.',
+        'Fill the required form fields and attach a copy of your INIT ID card.',
+        'Submit the request and note the request ID.'
       ]},
-      { type: 'warn', text: 'VPN access also expires every 90 days and must be renewed manually.' }
+      { type: 'kv', title: 'Applications to request', items: [
+        ['RDP', '10.11.174.10 and 10.11.174.21 | port 3389 | Risk ID RSP-10378'],
+        ['PAM', '10.11.125.14:443'],
+        ['SSH/SFTP', '10.11.174.40 | port 122 | Risk ID RSK-10378']
+      ]},
+      { type: 'list', title: 'Renewal path', items: [
+        'For renewal, choose Extension of Existing VPN Access instead of New VPN Access.',
+        'Attach the INIT ID card again and wait for approval.'
+      ]},
+      { type: 'warn', text: 'VPN, RDP, PAM, and SFTP access expire every 90 days and must be renewed manually.' }
     ]
   },
   {
     id: 'email_support', title: 'Email RTA IT Support', owner: 'user', icon: '✉️', time: '5 min', gate: ['vpn_request'],
     summary: 'After the request is submitted, email RTA IT support to grant the access and reference the request details.',
     details: [
-      { type: 'info', text: 'Use the RTA Automation Portal > IT Help Desk if you need to raise a support ticket or chase approvals.' }
+      { type: 'info', text: 'Use the RTA Automation Portal > IT Help Desk if you need to raise a support ticket or chase approvals.' },
+      { type: 'list', title: 'When to raise a ticket', items: [
+        'Access is not working after approval.',
+        'Approvals are blocked or unclear.',
+        'VPN, PAM, RDP, or SFTP access behaves unexpectedly.'
+      ]},
+      { type: 'list', title: 'Ticket checklist', items: [
+        'Reference the VPN request ID.',
+        'Describe the exact service that is failing.',
+        'Attach screenshots if available.',
+        'Send or submit after the VPN access request is approved and closed.'
+      ]}
     ]
   },
   {
     id: 'install_vpn', title: 'Install Ivanti and Test Access', owner: 'user', icon: '💻', time: '15 min', gate: ['email_support'],
     summary: 'Install Ivanti Secure Access Client, add the RTA VPN connection, and test VPN/PAM/SFTP access.',
     details: [
-      { type: 'kv', title: 'Connection', items: [
+      { type: 'kv', title: 'Ivanti connection', items: [
         ['Type', 'Policy Secure (UAC) or Connect Secure (VPN)'],
         ['Name', 'RTA VPN'],
         ['Server URL', 'https://ettisal.rta.ae/vendors']
       ]},
-      { type: 'info', text: 'For test servers: connect VPN → RDP to Jump Server → then connect to the target server.' }
+      { type: 'list', title: 'Authentication', items: [
+        'First factor: your RTA IITS username and password.',
+        'Second factor: the 6-digit TOTP from Oracle Authenticator.'
+      ]},
+      { type: 'kv', title: 'WinSCP / SFTP', items: [
+        ['Protocol', 'SFTP'],
+        ['Hostname', '10.11.174.40'],
+        ['Port', '122'],
+        ['Username', 'rtadom\\IITS_*USERNAME*']
+      ]},
+      { type: 'list', title: 'PAM test', items: [
+        'Connect to the RTA VPN.',
+        'Open the PAM URL.',
+        'Enter rtadom\\IITS_*USERNAME* and the Oracle Authenticator TOTP.',
+        'Search for your RTA account.',
+        'Use the Connect dropdown and choose PSM-RDP.'
+      ]},
+      { type: 'info', text: 'For test servers: connect VPN → RDP to Jump Server → then connect to the target server. For file transfer: VPN → WinSCP → SFTP server → target server.' }
     ]
   },
 ];
@@ -729,9 +797,9 @@ function App() {
       <div className="card side-card">
         <div className="side-card-title">Quick links</div>
         <div className="quick-links">
-          <a className="quick-link" href="https://direct.rta.ae"><span>RTA Automation Portal</span><small>Portal</small></a>
-          <a className="quick-link" href="https://srvterminal.init-db.lan"><span>Terminal Server</span><small>UAE-only workaround</small></a>
-          <a className="quick-link" href="https://ettisal.rta.ae/vendors"><span>Ivanti VPN</span><small>ettisal.rta.ae</small></a>
+          <a className="quick-link" href="https://direct.rta.ae" target="_blank" rel="noopener noreferrer"><span>RTA Automation Portal</span><small>Portal</small></a>
+          <a className="quick-link" href="https://srvterminal.init-db.lan" target="_blank" rel="noopener noreferrer"><span>Terminal Server</span><small>UAE-only workaround</small></a>
+          <a className="quick-link" href="https://ettisal.rta.ae/vendors" target="_blank" rel="noopener noreferrer"><span>Ivanti VPN</span><small>ettisal.rta.ae</small></a>
         </div>
       </div>
     </div>
@@ -747,11 +815,11 @@ function App() {
         <div className="topbar-left"><Logo /><span className="topbar-title">OTP Portal</span></div>
         <div className="topbar-right">
           <span className="nav-pill active">{currentUser.token}</span>
-          {['otp', 'wizard', 'help', 'admin'].map(v => (
+          {['otp', 'wizard', 'admin'].map(v => (
             <span key={v} className={`nav-pill ${view === v ? 'active' : ''}`} onClick={() => {
               setView(v);
               if (v === 'admin' && admin.session && !admin.data) loadAdminData();
-            }}>{v === 'otp' ? 'OTP' : v === 'wizard' ? 'RTA Wizard' : v === 'help' ? 'Help' : 'Admin'}</span>
+            }}>{v === 'otp' ? 'OTP' : v === 'wizard' ? 'RTA Wizard' : 'Admin'}</span>
           ))}
           <button className="btn btn-secondary" onClick={logoutUser}>Logout</button>
           {admin.session && view === 'admin' && <button className="btn btn-secondary" onClick={logoutAdmin}>Admin logout</button>}
@@ -760,7 +828,6 @@ function App() {
       <main className="app-shell">
         {view === 'otp' && <OtpView otp={otp} claimOtp={claimOtp} retryOtp={retryOtp} resetClaim={resetClaim} sidebar={sharedSidebar} currentUser={currentUser} />}
         {view === 'wizard' && <WizardView user={wizardUser} saveWizard={saveWizard} wizardStatus={wizardStatus} openStep={openStep} setOpenStep={setOpenStep} doneCount={doneCount} progressPct={progressPct} nextStep={nextStep} toggleStep={toggleStep} />}
-        {view === 'help' && <HelpView faqOpen={faqOpen} setFaqOpen={setFaqOpen} />}
         {view === 'admin' && <AdminView admin={admin} setAdmin={setAdmin} doAdminAuth={doAdminAuth} loadAdminData={loadAdminData} toggleAdminStep={toggleAdminStep} pendingAdminTasks={pendingAdminTasks} saveConfig={saveConfig} />}
       </main>
     </>
@@ -944,7 +1011,50 @@ function OtpView({ otp, claimOtp, retryOtp, resetClaim, sidebar, currentUser }) 
 }
 
 function WizardView({ user, saveWizard, wizardStatus, openStep, setOpenStep, doneCount, progressPct, nextStep, toggleStep }) {
+  const [guideOverlay, setGuideOverlay] = useState({ stepId: null, page: 0 });
+  const [wizardGuide, setWizardGuide] = useState({ steps: {}, generatedAt: null });
+  const [guideLoadState, setGuideLoadState] = useState({ loading: true, error: '' });
+  const guideStep = STEPS.find(step => step.id === guideOverlay.stepId);
+  const guideData = guideStep ? wizardGuide?.steps?.[guideStep.id] : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadWizardGuide() {
+      try {
+        const res = await fetch('/help/wizard-guide.json', { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`wizard-guide.json returned ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) {
+          setWizardGuide(data || { steps: {}, generatedAt: null });
+          setGuideLoadState({ loading: false, error: '' });
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.warn('Wizard guide JSON could not be loaded; using built-in fallback guide.', err);
+          setGuideLoadState({ loading: false, error: 'Using built-in fallback guide. Run python3 scripts/build_help_docs.py to refresh /help/wizard-guide.json.' });
+        }
+      }
+    }
+    loadWizardGuide();
+    return () => { cancelled = true; };
+  }, []);
+
+  function openGuideOverlay(step) {
+    setOpenStep(null);
+    setGuideOverlay({ stepId: step.id, page: 0 });
+  }
+
+  function closeGuideOverlay() {
+    setGuideOverlay({ stepId: null, page: 0 });
+  }
+
+  function setGuidePage(page) {
+    const max = Math.max(0, getGuidePages(guideStep, guideData).length - 1);
+    setGuideOverlay(state => ({ ...state, page: Math.max(0, Math.min(page, max)) }));
+  }
+
   return (
+    <>
     <div className="wide-layout">
       <div className="card main-panel">
         <div className="hero-row">
@@ -968,12 +1078,13 @@ function WizardView({ user, saveWizard, wizardStatus, openStep, setOpenStep, don
           <div className="progress-bar"><div className="progress-fill" style={{ width: `${progressPct}%` }} /></div>
         </div>
 
+        {guideLoadState.error && <div className="inline-note" style={{ marginBottom: 14 }}>{guideLoadState.error}</div>}
+
         <div className="step-grid">
           {STEPS.map(step => {
             const done = getVisibleDone(user, step);
             const unlocked = isUnlocked(user, step);
             const isNext = nextStep?.id === step.id;
-            const open = openStep === step.id;
             return (
               <div key={step.id} className={`step-card ${step.owner === 'admin' ? 'admin' : ''} ${done ? 'done' : ''} ${isNext ? 'next' : ''} ${!unlocked ? 'locked' : ''}`} style={done && step.owner === 'admin' ? { opacity: 0.68, background: RS.neutral100, borderColor: RS.neutral300 } : undefined}>
                 <div className={`rail ${done ? 'done' : isNext ? 'next' : ''}`}>{done ? '✓' : step.icon}</div>
@@ -995,10 +1106,9 @@ function WizardView({ user, saveWizard, wizardStatus, openStep, setOpenStep, don
                     ) : (
                       <span className={`pill ${done ? 'success' : 'warn'}`}>{done ? 'Completed by admin' : 'Waiting for admin'}</span>
                     )}
-                    <button className="btn btn-secondary" onClick={() => setOpenStep(open ? null : step.id)}>{open ? 'Hide guide' : '📖 View guide'}</button>
+                    <button className="btn btn-secondary" onClick={() => openGuideOverlay(step)}>📖 View guide</button>
                     {isNext && !done && <span className="pill primary">← Up next</span>}
                   </div>
-                  {open && <Guide step={step} user={user} />}
                 </div>
                 <div />
               </div>
@@ -1033,9 +1143,9 @@ function WizardView({ user, saveWizard, wizardStatus, openStep, setOpenStep, don
         <div className="card side-card">
           <div className="side-card-title">Quick links</div>
           <div className="quick-links">
-            <a className="quick-link" href="https://direct.rta.ae"><span>RTA Automation Portal</span><small>Main portal</small></a>
-            <a className="quick-link" href="https://srvterminal.init-db.lan"><span>Terminal Server</span><small>Outside UAE</small></a>
-            <a className="quick-link" href="https://ettisal.rta.ae/vendors"><span>Ivanti VPN</span><small>Install/test</small></a>
+            <a className="quick-link" href="https://direct.rta.ae" target="_blank" rel="noopener noreferrer"><span>RTA Automation Portal</span><small>Main portal</small></a>
+            <a className="quick-link" href="https://srvterminal.init-db.lan" target="_blank" rel="noopener noreferrer"><span>Terminal Server</span><small>Outside UAE</small></a>
+            <a className="quick-link" href="https://ettisal.rta.ae/vendors" target="_blank" rel="noopener noreferrer"><span>Ivanti VPN</span><small>Install/test</small></a>
           </div>
         </div>
 
@@ -1049,20 +1159,147 @@ function WizardView({ user, saveWizard, wizardStatus, openStep, setOpenStep, don
         </div>
       </div>
     </div>
+    {guideStep && (
+      <GuideOverlay
+        step={guideStep}
+        guide={guideData}
+        page={guideOverlay.page}
+        setPage={setGuidePage}
+        onClose={closeGuideOverlay}
+      />
+    )}
+    </>
+  );
+}
+
+function getGuidePages(step, guide) {
+  if (!step) return [];
+  const pages = [{ type: 'summary', title: 'Overview', text: step.summary }];
+  if (guide && Array.isArray(guide.pages) && guide.pages.length) {
+    return pages.concat(guide.pages.map(page => ({ ...page, type: 'html' })));
+  }
+  return pages.concat(step.details || []);
+}
+
+function GuideBlock({ block }) {
+  if (!block) return null;
+  if (block.type === 'info') return <div className="guide-block"><div className="inline-info">{block.text}</div></div>;
+  if (block.type === 'warn') return <div className="guide-block"><div className="inline-note">{block.text}</div></div>;
+  if (block.type === 'list') return <div className="guide-block"><div className="guide-label">{block.title}</div><ul>{block.items.map((item, i) => <li key={i}>{item}</li>)}</ul></div>;
+  if (block.type === 'links') return <div className="guide-block"><div className="guide-label">{block.title}</div><ul>{block.items.map((item, i) => <li key={i}><a href={item.href} target="_blank" rel="noopener noreferrer">{item.label}</a></li>)}</ul></div>;
+  if (block.type === 'kv') return <div className="guide-block"><div className="guide-label">{block.title}</div>{block.items.map((item, i) => <div className="kv" key={i}><div className="kv-key">{item[0]}</div><div>{item[1]}</div></div>)}</div>;
+  return null;
+}
+
+function GuideOverlay({ step, guide, page, setPage, onClose }) {
+  const pages = getGuidePages(step, guide);
+  const activePage = pages[page] || pages[0];
+  const lastPage = pages.length - 1;
+  const modalRef = React.useRef(null);
+  const dragRef = React.useRef({ dragging: false, startX: 0, startY: 0, left: 0, top: 0 });
+  const [position, setPosition] = useState(null);
+
+  useEffect(() => {
+    setPosition(null);
+  }, [step.id]);
+
+  useEffect(() => {
+    function onMove(e) {
+      if (!dragRef.current.dragging) return;
+      const rect = modalRef.current ? modalRef.current.getBoundingClientRect() : { width: 720, height: 400 };
+      const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+      const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
+      setPosition({
+        left: Math.max(8, Math.min(dragRef.current.left + e.clientX - dragRef.current.startX, maxLeft)),
+        top: Math.max(8, Math.min(dragRef.current.top + e.clientY - dragRef.current.startY, maxTop)),
+      });
+    }
+    function onUp() {
+      dragRef.current.dragging = false;
+      document.body.classList.remove('guide-dragging');
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') setPage(page - 1);
+      if (e.key === 'ArrowRight') setPage(page + 1);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [page, step.id]);
+
+  function startDrag(e) {
+    if (e.button !== 0 || e.target.closest('button, a, input, textarea, select')) return;
+    const rect = modalRef.current.getBoundingClientRect();
+    dragRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, left: rect.left, top: rect.top };
+    document.body.classList.add('guide-dragging');
+    e.preventDefault();
+  }
+
+  function openGuideLink(e) {
+    const link = e.target.closest && e.target.closest('a');
+    if (!link || !link.href) return;
+    e.preventDefault();
+    window.open(link.href, '_blank', 'noopener,noreferrer');
+  }
+
+  const modalStyle = position ? { left: position.left, top: position.top, margin: 0, transform: 'none' } : undefined;
+
+  return (
+    <div className="guide-overlay open" role="presentation">
+      <section ref={modalRef} className="guide-modal" role="dialog" aria-modal="false" aria-labelledby="guide-title" style={modalStyle}>
+        <div className="guide-modal-head" onMouseDown={startDrag} title="Drag to move guide">
+          <div>
+            <div className="eyebrow">// RTA wizard guide</div>
+            <h2 id="guide-title" className="guide-modal-title">{step.title}</h2>
+            <div className="sub">Step owner: {step.owner === 'admin' ? 'Admin' : 'You'} · Estimated time: {step.time}</div>
+          </div>
+          <button className="guide-close" onClick={onClose} aria-label="Close guide">×</button>
+        </div>
+
+        <div className="guide-tabs">
+          {pages.map((p, idx) => (
+            <button key={idx} className={'guide-tab ' + (idx === page ? 'active' : '')} onClick={() => setPage(idx)}>
+              {p.type === 'summary' ? 'Overview' : p.title || ('Page ' + (idx + 1))}
+            </button>
+          ))}
+        </div>
+
+        <div className="guide-modal-body">
+          {activePage.type === 'summary' ? (
+            <div className="guide-block">
+              <div className="inline-info">{activePage.text}</div>
+              <div className="small" style={{ marginTop: 12 }}>Use the tabs or the Back / Next buttons to move through only the help relevant to this wizard step.</div>
+            </div>
+          ) : activePage.type === 'html' ? (
+            <div className="guide-html" onClick={openGuideLink} dangerouslySetInnerHTML={{ __html: activePage.html || '' }} />
+          ) : (
+            <GuideBlock block={activePage} />
+          )}
+        </div>
+
+        <div className="guide-modal-footer">
+          <button className="btn btn-secondary" onClick={() => setPage(page - 1)} disabled={page <= 0}>← Back</button>
+          <div className="guide-count">{page + 1} / {pages.length}</div>
+          <button className="btn btn-primary" onClick={() => setPage(page + 1)} disabled={page >= lastPage}>Next →</button>
+        </div>
+      </section>
+    </div>
   );
 }
 
 function Guide({ step }) {
   return (
     <div className="guide-panel">
-      {step.details.map((block, idx) => {
-        if (block.type === 'info') return <div key={idx} className="guide-block"><div className="inline-info">{block.text}</div></div>;
-        if (block.type === 'warn') return <div key={idx} className="guide-block"><div className="inline-note">{block.text}</div></div>;
-        if (block.type === 'list') return <div key={idx} className="guide-block"><div className="guide-label">{block.title}</div><ul>{block.items.map((item, i) => <li key={i}>{item}</li>)}</ul></div>;
-        if (block.type === 'links') return <div key={idx} className="guide-block"><div className="guide-label">{block.title}</div><ul>{block.items.map((item, i) => <li key={i}><a href={item.href}>{item.label}</a></li>)}</ul></div>;
-        if (block.type === 'kv') return <div key={idx} className="guide-block"><div className="guide-label">{block.title}</div>{block.items.map((item, i) => <div className="kv" key={i}><div className="kv-key">{item[0]}</div><div>{item[1]}</div></div>)}</div>;
-        return null;
-      })}
+      {step.details.map((block, idx) => <GuideBlock key={idx} block={block} />)}
     </div>
   );
 }
